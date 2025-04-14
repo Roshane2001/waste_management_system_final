@@ -387,43 +387,59 @@ const WasteCollectionHome = () => {
     // Add new state for new collection form
     const [showNewCollectionForm, setShowNewCollectionForm] = useState(false);
     const [newCollectionData, setNewCollectionData] = useState({
-        id: '',
         location: '',
         date: '',
         time: '',
         status: 'Scheduled',
         wasteType: 'Mixed',
-        weight: 'N/A',
         assignedVehicle: ''
     });
 
     // Handle new collection form input changes
     const handleNewCollectionChange = (e) => {
         const { name, value } = e.target;
-        setNewCollectionData({
-            ...newCollectionData,
+        setNewCollectionData(prevData => ({
+            ...prevData,
             [name]: value
-        });
+        }));
     };
 
     // Handle new collection form submission
     const handleNewCollectionSubmit = () => {
+        if (!newCollectionData.location || !newCollectionData.date || !newCollectionData.time || !newCollectionData.assignedVehicle) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
         const newCollection = {
-            ...newCollectionData,
-            id: collections.length + 1
+            id: collections.length + 1,
+            location: newCollectionData.location,
+            date: newCollectionData.date,
+            time: newCollectionData.time,
+            status: 'Scheduled',
+            wasteType: newCollectionData.wasteType,
+            vehicle: newCollectionData.assignedVehicle,
+            type: 'Collection'
         };
-        setCollections([...collections, newCollection]);
-        setShowNewCollectionForm(false);
+
+        // Update collections state
+        setCollections(prevCollections => [...prevCollections, newCollection]);
+
+        // Reset form
         setNewCollectionData({
-            id: '',
             location: '',
             date: '',
             time: '',
             status: 'Scheduled',
             wasteType: 'Mixed',
-            weight: 'N/A',
             assignedVehicle: ''
         });
+        setShowNewCollectionForm(false);
+
+        // Switch to schedule tab and calendar view
+        setActiveTab('schedule');
+        setScheduleView('calendar');
+        setSelectedDate(new Date(newCollectionData.date));
     };
 
     // Add state for editing
@@ -492,8 +508,6 @@ const WasteCollectionHome = () => {
             { id: 1, title: 'Morning Collection Route', date: '2024-03-16', startTime: '08:00 AM', endTime: '12:00 PM', location: 'Downtown Area', assignedTo: 'John Driver', vehicle: 'Truck-001', status: 'Scheduled' },
             { id: 2, title: 'Afternoon Collection Route', date: '2024-03-16', startTime: '01:00 PM', endTime: '05:00 PM', location: 'Suburban Area', assignedTo: 'Sarah Driver', vehicle: 'Van-001', status: 'Scheduled' },
             { id: 3, title: 'Evening Collection Route', date: '2024-03-16', startTime: '06:00 PM', endTime: '10:00 PM', location: 'Industrial Area', assignedTo: 'Mike Driver', vehicle: 'Truck-002', status: 'Scheduled' },
-            { id: 4, title: 'Special Collection', date: '2024-03-17', startTime: '09:00 AM', endTime: '11:00 AM', location: 'Commercial District', assignedTo: 'Lisa Driver', vehicle: 'Van-002', status: 'Scheduled' },
-            { id: 5, title: 'Hazardous Waste Collection', date: '2024-03-17', startTime: '02:00 PM', endTime: '04:00 PM', location: 'Industrial Park', assignedTo: 'Tom Driver', vehicle: 'Truck-003', status: 'Scheduled' },
         ],
         staff: [
             { id: 11, title: 'John Driver', date: '2024-03-16', startTime: '08:00 AM', endTime: '05:00 PM', role: 'Collection Driver', location: 'Downtown Area', status: 'Scheduled' },
@@ -1172,6 +1186,103 @@ const WasteCollectionHome = () => {
         return collections.filter(collection => collection.date === dateString);
     };
 
+    const [complaints, setComplaints] = useState([
+        {
+            id: 1,
+            residentName: 'John Smith',
+            category: 'Collection Service',
+            title: 'Missed Collection',
+            description: 'The waste collection was not done on the scheduled date. This is the second time this month.',
+            location: '123 Main St',
+            status: 'Pending',
+            date: '2024-03-15',
+            reply: '',
+            updatedAt: '2024-03-15'
+        },
+        {
+            id: 2,
+            residentName: 'Jane Doe',
+            category: 'Vehicle Issue',
+            title: 'Noisy Collection Vehicle',
+            description: 'The collection vehicle is making excessive noise during early morning collections.',
+            location: '456 Oak Ave',
+            status: 'In Progress',
+            date: '2024-03-14',
+            reply: 'We have noted your complaint and will inspect the vehicle for noise issues.',
+            updatedAt: '2024-03-14'
+        },
+        {
+            id: 3,
+            residentName: 'Robert Johnson',
+            category: 'Staff Behavior',
+            title: 'Rude Collection Staff',
+            description: 'The collection staff was rude and unprofessional during the collection.',
+            location: '789 Pine Rd',
+            status: 'Resolved',
+            date: '2024-03-13',
+            reply: 'We apologize for the behavior. The staff member has been counseled and appropriate action has been taken.',
+            updatedAt: '2024-03-13'
+        }
+    ]);
+
+    const [editingComplaint, setEditingComplaint] = useState(null);
+    const [editComplaintData, setEditComplaintData] = useState({
+        status: '',
+        reply: ''
+    });
+
+    // Handle complaint status and reply update
+    const handleComplaintUpdate = (complaintId) => {
+        setComplaints(prevComplaints =>
+            prevComplaints.map(complaint =>
+                complaint.id === complaintId
+                    ? {
+                        ...complaint,
+                        status: editComplaintData.status,
+                        reply: editComplaintData.reply,
+                        updatedAt: new Date().toISOString().split('T')[0]
+                    }
+                    : complaint
+            )
+        );
+        setEditingComplaint(null);
+        setEditComplaintData({ status: '', reply: '' });
+    };
+
+    // Add these state variables near the top of the component
+    const [complaintFilters, setComplaintFilters] = useState({
+        category: 'all',
+        status: 'all',
+        date: ''
+    });
+
+    // Add this function to filter complaints
+    const getFilteredComplaints = () => {
+        return complaints.filter(complaint => {
+            const matchesCategory = complaintFilters.category === 'all' || complaint.category === complaintFilters.category;
+            const matchesStatus = complaintFilters.status === 'all' || complaint.status === complaintFilters.status;
+            const matchesDate = !complaintFilters.date || complaint.date === complaintFilters.date;
+
+            return matchesCategory && matchesStatus && matchesDate;
+        });
+    };
+
+    // Add this function to handle filter changes
+    const handleFilterChange = (e) => {
+        const { name, value } = e.target;
+        setComplaintFilters(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    // Add this function to handle filter button click
+    const handleFilterButtonClick = () => {
+        // The filtered complaints will be automatically updated through the getFilteredComplaints function
+        // This function is here in case you want to add any additional logic when applying filters
+        console.log('Filters applied:', complaintFilters);
+    };
+
     /**
      * Component Render
      * 
@@ -1220,6 +1331,12 @@ const WasteCollectionHome = () => {
                         </li>
                         <li className={activeTab === 'shop' ? 'active' : ''} onClick={() => setActiveTab('shop')}>
                             <span className="icon">🛒</span> Shop
+                        </li>
+                        <li className={activeTab === 'complaints' ? 'active' : ''} onClick={() => setActiveTab('complaints')}>
+                            <span className="icon">📝</span> Complaints
+                        </li>
+                        <li className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}>
+                            <span className="icon">⚙️</span> Settings
                         </li>
                     </ul>
                 </nav>
@@ -1392,6 +1509,7 @@ const WasteCollectionHome = () => {
                                                 value={newCollectionData.location}
                                                 onChange={handleNewCollectionChange}
                                                 className="form-input"
+                                                required
                                             />
                                         </div>
                                         <div className="form-group">
@@ -1402,6 +1520,7 @@ const WasteCollectionHome = () => {
                                                 value={newCollectionData.date}
                                                 onChange={handleNewCollectionChange}
                                                 className="form-input"
+                                                required
                                             />
                                         </div>
                                         <div className="form-group">
@@ -1412,6 +1531,7 @@ const WasteCollectionHome = () => {
                                                 value={newCollectionData.time}
                                                 onChange={handleNewCollectionChange}
                                                 className="form-input"
+                                                required
                                             />
                                         </div>
                                         <div className="form-group">
@@ -1434,6 +1554,7 @@ const WasteCollectionHome = () => {
                                                 value={newCollectionData.assignedVehicle}
                                                 onChange={handleNewCollectionChange}
                                                 className="form-input"
+                                                required
                                             >
                                                 <option value="">Select Vehicle</option>
                                                 <option value="Truck-001">Truck-001</option>
@@ -1587,166 +1708,100 @@ const WasteCollectionHome = () => {
 
                     {/* Schedule Tab */}
                     {activeTab === 'schedule' && (
-                        <div className="schedule">
-                            <h2>Schedule Management</h2>
-
-                            {/* Schedule Controls */}
+                        <div className="schedule-section">
+                            <h2>Schedule</h2>
                             <div className="schedule-controls">
                                 <div className="schedule-view-options">
                                     <button
-                                        className={`view-option-btn ${scheduleView === 'calendar' ? 'active' : ''}`}
+                                        className={`view-btn ${scheduleView === 'calendar' ? 'active' : ''}`}
                                         onClick={() => setScheduleView('calendar')}
                                     >
-                                        <span className="icon">📅</span> Calendar View
+                                        Calendar View
                                     </button>
                                     <button
-                                        className={`view-option-btn ${scheduleView === 'list' ? 'active' : ''}`}
+                                        className={`view-btn ${scheduleView === 'list' ? 'active' : ''}`}
                                         onClick={() => setScheduleView('list')}
                                     >
-                                        <span className="icon">📋</span> List View
+                                        List View
                                     </button>
                                 </div>
-
-                                <div className="schedule-filters">
-                                    <select className="filter-select">
-                                        <option value="all">All Types</option>
-                                        <option value="collections">Collections</option>
-                                        <option value="staff">Staff</option>
-                                        <option value="vehicles">Vehicles</option>
-                                    </select>
-                                    <select className="filter-select">
-                                        <option value="all">All Status</option>
-                                        <option value="scheduled">Scheduled</option>
-                                        <option value="in-progress">In Progress</option>
-                                        <option value="completed">Completed</option>
-                                    </select>
-                                    <input type="date" className="date-filter" />
-                                </div>
-
-                                <button className="add-schedule-btn">Add New Schedule</button>
                             </div>
 
-                            {/* Calendar View */}
-                            {scheduleView === 'calendar' && (
-                                <div className="calendar-view">
-                                    <div className="calendar-container">
-                                        <Calendar
-                                            className="react-calendar"
-                                            onChange={handleDateSelect}
-                                            value={selectedDate}
-                                            tileContent={({ date, view }) => {
-                                                if (view === 'month') {
-                                                    const events = getEventsForDate(date);
-                                                    if (events.length > 0) {
-                                                        return (
-                                                            <div className="calendar-events">
-                                                                {events.map(event => (
-                                                                    <div
-                                                                        key={event.id}
-                                                                        className={`calendar-event ${event.status.toLowerCase()}`}
-                                                                        title={`${event.location} - ${event.time}`}
-                                                                    >
-                                                                        {event.wasteType}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        );
-                                                    }
-                                                }
-                                                return null;
-                                            }}
-                                        />
-                                    </div>
-
-                                    {/* Selected Date Events */}
-                                    <div className="selected-date-events">
-                                        <h3>Collections for {selectedDate.toLocaleDateString()}</h3>
-                                        {getEventsForDate(selectedDate).length > 0 ? (
-                                            <div className="events-list">
-                                                {getEventsForDate(selectedDate).map(event => (
-                                                    <div key={event.id} className="event-card">
-                                                        <div className="event-header">
-                                                            <h4>{event.location}</h4>
-                                                            <span className={`status-badge ${event.status.toLowerCase()}`}>
-                                                                {event.status}
-                                                            </span>
+                            {scheduleView === 'calendar' ? (
+                                <div className="calendar-container">
+                                    <Calendar
+                                        onChange={setSelectedDate}
+                                        value={selectedDate}
+                                        className="waste-calendar"
+                                    />
+                                    <div className="schedule-details">
+                                        <h3>Schedule Details for {selectedDate.toLocaleDateString()}</h3>
+                                        <div className="schedule-items">
+                                            {getEventsForDate(selectedDate).map(event => (
+                                                <div key={event.id} className="schedule-item">
+                                                    <div className="schedule-item-header">
+                                                        <h4>{event.type}</h4>
+                                                        <span className={`status-badge ${event.status.toLowerCase()}`}>
+                                                            {event.status}
+                                                        </span>
+                                                    </div>
+                                                    <div className="schedule-item-details">
+                                                        <div className="detail-row">
+                                                            <span className="label">Time:</span>
+                                                            <span className="value">{event.time}</span>
                                                         </div>
-                                                        <div className="event-details">
-                                                            <p><strong>Time:</strong> {event.time}</p>
-                                                            <p><strong>Waste Type:</strong> {event.wasteType}</p>
-                                                            <p><strong>Vehicle:</strong> {event.assignedVehicle}</p>
-                                                            <p><strong>Driver:</strong> {event.assignedDriver}</p>
+                                                        <div className="detail-row">
+                                                            <span className="label">Area:</span>
+                                                            <span className="value">{event.area}</span>
                                                         </div>
-                                                        <div className="event-actions">
-                                                            <button
-                                                                className="action-btn edit"
-                                                                onClick={() => handleEditClick(event)}
-                                                            >
-                                                                Edit
-                                                            </button>
-                                                            <button
-                                                                className="action-btn view"
-                                                                onClick={() => {/* Add view details handler */ }}
-                                                            >
-                                                                View Details
-                                                            </button>
+                                                        <div className="detail-row">
+                                                            <span className="label">Vehicle:</span>
+                                                            <span className="value">{event.vehicle}</span>
+                                                        </div>
+                                                        <div className="detail-row">
+                                                            <span className="label">Notes:</span>
+                                                            <span className="value">{event.notes}</span>
                                                         </div>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <p className="no-events">No collections scheduled for this date</p>
-                                        )}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
-                            )}
-
-                            {/* List View */}
-                            {scheduleView === 'list' && (
-                                <div className="list-view">
-                                    <div className="schedule-tabs">
-                                        <button className="schedule-tab active">Collections</button>
-                                        <button className="schedule-tab">Staff</button>
-                                        <button className="schedule-tab">Vehicles</button>
-                                    </div>
-
-                                    <div className="schedule-list">
-                                        {scheduleData.collections.map(item => (
-                                            <div className="schedule-item" key={item.id}>
-                                                <div className="schedule-item-header">
-                                                    <h3>{item.title}</h3>
-                                                    <span className={`status-badge ${item.status.toLowerCase()}`}>
-                                                        {item.status}
-                                                    </span>
+                            ) : (
+                                <div className="schedule-list">
+                                    {collections.map(collection => (
+                                        <div key={collection.id} className="schedule-item">
+                                            <div className="schedule-item-header">
+                                                <h4>{collection.type}</h4>
+                                                <span className={`status-badge ${collection.status.toLowerCase()}`}>
+                                                    {collection.status}
+                                                </span>
+                                            </div>
+                                            <div className="schedule-item-details">
+                                                <div className="detail-row">
+                                                    <span className="label">Date:</span>
+                                                    <span className="value">{collection.date}</span>
                                                 </div>
-
-                                                <div className="schedule-item-details">
-                                                    <div className="detail-row">
-                                                        <span className="detail-label">Date</span>
-                                                        <span className="detail-value">{item.date}</span>
-                                                    </div>
-                                                    <div className="detail-row">
-                                                        <span className="detail-label">Time</span>
-                                                        <span className="detail-value">{item.time}</span>
-                                                    </div>
-                                                    <div className="detail-row">
-                                                        <span className="detail-label">Location</span>
-                                                        <span className="detail-value">{item.location}</span>
-                                                    </div>
-                                                    <div className="detail-row">
-                                                        <span className="detail-label">Vehicle</span>
-                                                        <span className="detail-value">{item.vehicle}</span>
-                                                    </div>
+                                                <div className="detail-row">
+                                                    <span className="label">Time:</span>
+                                                    <span className="value">{collection.time}</span>
                                                 </div>
-
-                                                <div className="schedule-item-actions">
-                                                    <button className="action-btn edit">Edit</button>
-                                                    <button className="action-btn view">View Details</button>
-                                                    <button className="action-btn delete">Cancel</button>
+                                                <div className="detail-row">
+                                                    <span className="label">Area:</span>
+                                                    <span className="value">{collection.area}</span>
+                                                </div>
+                                                <div className="detail-row">
+                                                    <span className="label">Vehicle:</span>
+                                                    <span className="value">{collection.vehicle}</span>
+                                                </div>
+                                                <div className="detail-row">
+                                                    <span className="label">Notes:</span>
+                                                    <span className="value">{collection.notes}</span>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -2780,7 +2835,6 @@ const WasteCollectionHome = () => {
                                 {bulkCollectionTab === 'requests' && (
                                     <div className="requests-section">
                                         <div className="action-bar">
-                                            <button className="add-btn">Add New Request</button>
                                             <div className="search-bar">
                                                 <input type="text" placeholder="Search requests..." />
                                                 <button className="search-btn">Search</button>
@@ -2794,7 +2848,6 @@ const WasteCollectionHome = () => {
                                                     <th>Resident</th>
                                                     <th>Address</th>
                                                     <th>Waste Type</th>
-                                                    <th>Estimated Weight</th>
                                                     <th>Request Date</th>
                                                     <th>Preferred Date</th>
                                                     <th>Status</th>
@@ -2808,7 +2861,6 @@ const WasteCollectionHome = () => {
                                                         <td>{request.residentName}</td>
                                                         <td>{request.address}</td>
                                                         <td>{request.wasteType}</td>
-                                                        <td>{request.estimatedWeight}</td>
                                                         <td>{request.requestDate}</td>
                                                         <td>{request.preferredDate}</td>
                                                         <td>
@@ -3285,6 +3337,192 @@ const WasteCollectionHome = () => {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* Complaints Tab */}
+                    {activeTab === 'complaints' && (
+                        <div className="complaints">
+                            <h2>Complaints Management</h2>
+
+                            {/* Complaints Filters */}
+                            <div className="complaints-filters">
+                                <select
+                                    className="filter-select"
+                                    name="category"
+                                    value={complaintFilters.category}
+                                    onChange={handleFilterChange}
+                                >
+                                    <option value="all">All Categories</option>
+                                    <option value="Collection Service">Collection Service</option>
+                                    <option value="Vehicle Issue">Vehicle Issue</option>
+                                    <option value="Staff Behavior">Staff Behavior</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <select
+                                    className="filter-select"
+                                    name="status"
+                                    value={complaintFilters.status}
+                                    onChange={handleFilterChange}
+                                >
+                                    <option value="all">All Status</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Resolved">Resolved</option>
+                                </select>
+                                <input
+                                    type="date"
+                                    className="date-filter"
+                                    name="date"
+                                    value={complaintFilters.date}
+                                    onChange={handleFilterChange}
+                                />
+                                <button
+                                    className="filter-btn"
+                                    onClick={handleFilterButtonClick}
+                                >
+                                    Filter
+                                </button>
+                            </div>
+
+                            {/* Complaints Table */}
+                            <div className="complaints-table">
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Resident</th>
+                                            <th>Category</th>
+                                            <th>Title</th>
+                                            <th>Location</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {getFilteredComplaints().map(complaint => (
+                                            <tr key={complaint.id}>
+                                                <td>{complaint.id}</td>
+                                                <td>{complaint.residentName}</td>
+                                                <td>{complaint.category}</td>
+                                                <td>{complaint.title}</td>
+                                                <td>{complaint.location}</td>
+                                                <td>{complaint.date}</td>
+                                                <td>
+                                                    <span className={`status-badge ${complaint.status.toLowerCase().replace(' ', '-')}`}>
+                                                        {complaint.status}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <button
+                                                        className="action-btn view"
+                                                        onClick={() => {
+                                                            setEditingComplaint(complaint.id);
+                                                            setEditComplaintData({
+                                                                status: complaint.status,
+                                                                reply: complaint.reply
+                                                            });
+                                                        }}
+                                                    >
+                                                        View/Update
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Complaint Details Modal */}
+                            {editingComplaint && (
+                                <div className="complaint-modal">
+                                    <div className="modal-content">
+                                        <h3>Complaint Details</h3>
+                                        <div className="complaint-details">
+                                            <div className="detail-row">
+                                                <span className="detail-label">Resident:</span>
+                                                <span className="detail-value">
+                                                    {complaints.find(c => c.id === editingComplaint)?.residentName}
+                                                </span>
+                                            </div>
+                                            <div className="detail-row">
+                                                <span className="detail-label">Category:</span>
+                                                <span className="detail-value">
+                                                    {complaints.find(c => c.id === editingComplaint)?.category}
+                                                </span>
+                                            </div>
+                                            <div className="detail-row">
+                                                <span className="detail-label">Title:</span>
+                                                <span className="detail-value">
+                                                    {complaints.find(c => c.id === editingComplaint)?.title}
+                                                </span>
+                                            </div>
+                                            <div className="detail-row">
+                                                <span className="detail-label">Description:</span>
+                                                <p className="detail-value">
+                                                    {complaints.find(c => c.id === editingComplaint)?.description}
+                                                </p>
+                                            </div>
+                                            <div className="detail-row">
+                                                <span className="detail-label">Location:</span>
+                                                <span className="detail-value">
+                                                    {complaints.find(c => c.id === editingComplaint)?.location}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="complaint-update">
+                                            <div className="form-group">
+                                                <label>Status:</label>
+                                                <select
+                                                    value={editComplaintData.status}
+                                                    onChange={(e) => setEditComplaintData({
+                                                        ...editComplaintData,
+                                                        status: e.target.value
+                                                    })}
+                                                    className="form-input"
+                                                >
+                                                    <option value="Pending">Pending</option>
+                                                    <option value="In Progress">In Progress</option>
+                                                    <option value="Resolved">Resolved</option>
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Reply:</label>
+                                                <textarea
+                                                    value={editComplaintData.reply}
+                                                    onChange={(e) => setEditComplaintData({
+                                                        ...editComplaintData,
+                                                        reply: e.target.value
+                                                    })}
+                                                    className="form-input"
+                                                    rows="4"
+                                                    placeholder="Enter your reply to the resident..."
+                                                ></textarea>
+                                            </div>
+                                        </div>
+
+                                        <div className="modal-actions">
+                                            <button
+                                                className="action-btn save"
+                                                onClick={() => handleComplaintUpdate(editingComplaint)}
+                                            >
+                                                Update
+                                            </button>
+                                            <button
+                                                className="action-btn cancel"
+                                                onClick={() => {
+                                                    setEditingComplaint(null);
+                                                    setEditComplaintData({ status: '', reply: '' });
+                                                }}
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </main>
