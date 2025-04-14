@@ -8,6 +8,8 @@
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 import './WasteCollectionHome.css';
 
 const WasteCollectionHome = () => {
@@ -18,6 +20,7 @@ const WasteCollectionHome = () => {
     const [reportType, setReportType] = useState('collections');
     const [recyclingTab, setRecyclingTab] = useState('overview');
     const [bulkCollectionTab, setBulkCollectionTab] = useState('requests');
+    const [selectedDate, setSelectedDate] = useState(new Date());
 
     /**
      * Settings Data
@@ -221,11 +224,11 @@ const WasteCollectionHome = () => {
      * Contains contact information and collection preferences.
      */
     const [residents, setResidents] = useState([
-        { id: 1, name: 'John Smith', address: '123 Main St', area: 'Downtown', phone: '555-123-4567', email: 'john.smith@email.com', collectionDay: 'Monday', wasteType: 'Mixed' },
-        { id: 2, name: 'Jane Doe', address: '456 Oak Ave', area: 'Suburban', phone: '555-234-5678', email: 'jane.doe@email.com', collectionDay: 'Tuesday', wasteType: 'Organic' },
-        { id: 3, name: 'Robert Johnson', address: '789 Pine Rd', area: 'Industrial', phone: '555-345-6789', email: 'robert.johnson@email.com', collectionDay: 'Wednesday', wasteType: 'Recyclable' },
-        { id: 4, name: 'Emily Davis', address: '321 Elm St', area: 'Residential', phone: '555-456-7890', email: 'emily.davis@email.com', collectionDay: 'Thursday', wasteType: 'Mixed' },
-        { id: 5, name: 'Michael Wilson', address: '654 Maple Dr', area: 'Commercial', phone: '555-567-8901', email: 'michael.wilson@email.com', collectionDay: 'Friday', wasteType: 'Organic' },
+        { id: 1, name: 'John Smith', address: '123 Main St', postalCode: '10001', phone: '555-123-4567', email: 'john.smith@email.com' },
+        { id: 2, name: 'Jane Doe', address: '456 Oak Ave', postalCode: '10002', phone: '555-234-5678', email: 'jane.doe@email.com' },
+        { id: 3, name: 'Robert Johnson', address: '789 Pine Rd', postalCode: '10003', phone: '555-345-6789', email: 'robert.johnson@email.com' },
+        { id: 4, name: 'Emily Davis', address: '321 Elm St', postalCode: '10004', phone: '555-456-7890', email: 'emily.davis@email.com' },
+        { id: 5, name: 'Michael Wilson', address: '654 Maple Dr', postalCode: '10005', phone: '555-567-8901', email: 'michael.wilson@email.com' },
     ]);
 
     /**
@@ -391,9 +394,7 @@ const WasteCollectionHome = () => {
         status: 'Scheduled',
         wasteType: 'Mixed',
         weight: 'N/A',
-        assignedVehicle: '',
-        assignedDriver: '',
-        notes: ''
+        assignedVehicle: ''
     });
 
     // Handle new collection form input changes
@@ -421,9 +422,7 @@ const WasteCollectionHome = () => {
             status: 'Scheduled',
             wasteType: 'Mixed',
             weight: 'N/A',
-            assignedVehicle: '',
-            assignedDriver: '',
-            notes: ''
+            assignedVehicle: ''
         });
     };
 
@@ -1076,11 +1075,9 @@ const WasteCollectionHome = () => {
     const [editResidentForm, setEditResidentForm] = useState({
         name: '',
         address: '',
-        area: '',
+        postalCode: '',
         phone: '',
-        email: '',
-        collectionDay: '',
-        wasteType: ''
+        email: ''
     });
 
     // Handle edit resident button click
@@ -1089,11 +1086,9 @@ const WasteCollectionHome = () => {
         setEditResidentForm({
             name: resident.name,
             address: resident.address,
-            area: resident.area,
+            postalCode: resident.postalCode,
             phone: resident.phone,
-            email: resident.email,
-            collectionDay: resident.collectionDay,
-            wasteType: resident.wasteType
+            email: resident.email
         });
     };
 
@@ -1117,11 +1112,9 @@ const WasteCollectionHome = () => {
         setEditResidentForm({
             name: '',
             address: '',
-            area: '',
+            postalCode: '',
             phone: '',
-            email: '',
-            collectionDay: '',
-            wasteType: ''
+            email: ''
         });
     };
 
@@ -1137,11 +1130,9 @@ const WasteCollectionHome = () => {
     const [newResidentData, setNewResidentData] = useState({
         name: '',
         address: '',
-        area: 'Downtown',
+        postalCode: '',
         phone: '',
-        email: '',
-        collectionDay: 'Monday',
-        wasteType: 'Mixed'
+        email: ''
     });
 
     // Handle new resident form changes
@@ -1164,12 +1155,21 @@ const WasteCollectionHome = () => {
         setNewResidentData({
             name: '',
             address: '',
-            area: 'Downtown',
+            postalCode: '',
             phone: '',
-            email: '',
-            collectionDay: 'Monday',
-            wasteType: 'Mixed'
+            email: ''
         });
+    };
+
+    // Add this function to handle date selection
+    const handleDateSelect = (date) => {
+        setSelectedDate(date);
+    };
+
+    // Add this function to get events for a specific date
+    const getEventsForDate = (date) => {
+        const dateString = date.toISOString().split('T')[0];
+        return collections.filter(collection => collection.date === dateString);
     };
 
     /**
@@ -1441,29 +1441,6 @@ const WasteCollectionHome = () => {
                                                 <option value="Truck-002">Truck-002</option>
                                             </select>
                                         </div>
-                                        <div className="form-group">
-                                            <label>Assigned Driver:</label>
-                                            <select
-                                                name="assignedDriver"
-                                                value={newCollectionData.assignedDriver}
-                                                onChange={handleNewCollectionChange}
-                                                className="form-input"
-                                            >
-                                                <option value="">Select Driver</option>
-                                                <option value="John Driver">John Driver</option>
-                                                <option value="Sarah Driver">Sarah Driver</option>
-                                                <option value="Mike Driver">Mike Driver</option>
-                                            </select>
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Notes:</label>
-                                            <textarea
-                                                name="notes"
-                                                value={newCollectionData.notes}
-                                                onChange={handleNewCollectionChange}
-                                                className="form-input"
-                                            ></textarea>
-                                        </div>
                                     </div>
                                     <div className="form-actions">
                                         <button className="action-btn save" onClick={handleNewCollectionSubmit}>Save</button>
@@ -1478,14 +1455,12 @@ const WasteCollectionHome = () => {
                                 <table className="data-table">
                                     <thead>
                                         <tr>
-                                            <th>Location</th>
+                                            <th>Area</th>
                                             <th>Date</th>
                                             <th>Time</th>
                                             <th>Status</th>
                                             <th>Waste Type</th>
-                                            <th>Weight</th>
-                                            <th>Vehicle</th>
-                                            <th>Driver</th>
+                                            <th>Vehicle No.</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -1547,43 +1522,31 @@ const WasteCollectionHome = () => {
                                                             </select>
                                                         </td>
                                                         <td className="edit-cell">
-                                                            <input
-                                                                type="text"
-                                                                name="weight"
-                                                                value={editFormData.weight}
-                                                                onChange={handleEditFormChange}
-                                                                className="edit-input"
-                                                            />
-                                                        </td>
-                                                        <td className="edit-cell">
                                                             <select
-                                                                name="assignedVehicle"
-                                                                value={editFormData.assignedVehicle}
+                                                                name="vehicle"
+                                                                value={editFormData.vehicle}
                                                                 onChange={handleEditFormChange}
                                                                 className="edit-input"
                                                             >
                                                                 <option value="Truck-001">Truck-001</option>
-                                                                <option value="Van-001">Van-001</option>
                                                                 <option value="Truck-002">Truck-002</option>
+                                                                <option value="Van-001">Van-001</option>
+                                                                <option value="Van-002">Van-002</option>
                                                             </select>
                                                         </td>
-                                                        <td className="edit-cell">
-                                                            <select
-                                                                name="assignedDriver"
-                                                                value={editFormData.assignedDriver}
-                                                                onChange={handleEditFormChange}
-                                                                className="edit-input"
+                                                        <td>
+                                                            <button
+                                                                className="action-btn save"
+                                                                onClick={() => handleEditFormSubmit(collection.id)}
                                                             >
-                                                                <option value="John Driver">John Driver</option>
-                                                                <option value="Sarah Driver">Sarah Driver</option>
-                                                                <option value="Mike Driver">Mike Driver</option>
-                                                            </select>
-                                                        </td>
-                                                        <td className="edit-cell">
-                                                            <div className="edit-actions">
-                                                                <button className="action-btn save" onClick={handleEditFormSubmit}>Save</button>
-                                                                <button className="action-btn cancel" onClick={() => setEditingCollection(null)}>Cancel</button>
-                                                            </div>
+                                                                Save
+                                                            </button>
+                                                            <button
+                                                                className="action-btn cancel"
+                                                                onClick={() => setEditingCollection(null)}
+                                                            >
+                                                                Cancel
+                                                            </button>
                                                         </td>
                                                     </>
                                                 ) : (
@@ -1597,13 +1560,20 @@ const WasteCollectionHome = () => {
                                                             </span>
                                                         </td>
                                                         <td>{collection.wasteType}</td>
-                                                        <td>{collection.weight}</td>
-                                                        <td>{collection.assignedVehicle}</td>
-                                                        <td>{collection.assignedDriver}</td>
+                                                        <td>{collection.vehicle}</td>
                                                         <td>
-                                                            <button className="action-btn edit" onClick={() => handleEditClick(collection)}>Edit</button>
-                                                            <button className="action-btn delete" onClick={() => handleDeleteClick(collection.id)}>Delete</button>
-                                                            <button className="action-btn view">View Details</button>
+                                                            <button
+                                                                className="action-btn edit"
+                                                                onClick={() => handleEditClick(collection)}
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                className="action-btn delete"
+                                                                onClick={() => handleDeleteClick(collection.id)}
+                                                            >
+                                                                Delete
+                                                            </button>
                                                         </td>
                                                     </>
                                                 )}
@@ -1611,35 +1581,6 @@ const WasteCollectionHome = () => {
                                         ))}
                                     </tbody>
                                 </table>
-                            </div>
-
-                            {/* Collection Notes and Quick Actions */}
-                            <div className="dashboard-grid">
-                                <div className="dashboard-card">
-                                    <h3>Collection Notes</h3>
-                                    <div className="notes-list">
-                                        {collections.map(collection => (
-                                            <div key={collection.id} className="note-item">
-                                                <div className="note-header">
-                                                    <span className="location">{collection.location}</span>
-                                                    <span className={`status-badge ${collection.status.toLowerCase().replace(' ', '-')}`}>
-                                                        {collection.status}
-                                                    </span>
-                                                </div>
-                                                <p className="note-content">{collection.notes}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="dashboard-card">
-                                    <h3>Quick Actions</h3>
-                                    <div className="quick-actions">
-                                        <button className="action-btn">Generate Report</button>
-                                        <button className="action-btn">Export Schedule</button>
-                                        <button className="action-btn">Print Schedule</button>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     )}
@@ -1688,49 +1629,74 @@ const WasteCollectionHome = () => {
                             {/* Calendar View */}
                             {scheduleView === 'calendar' && (
                                 <div className="calendar-view">
-                                    <div className="calendar-header">
-                                        <h3>March 2024</h3>
-                                        <div className="calendar-nav">
-                                            <button className="calendar-nav-btn">Previous</button>
-                                            <button className="calendar-nav-btn">Next</button>
-                                        </div>
+                                    <div className="calendar-container">
+                                        <Calendar
+                                            className="react-calendar"
+                                            onChange={handleDateSelect}
+                                            value={selectedDate}
+                                            tileContent={({ date, view }) => {
+                                                if (view === 'month') {
+                                                    const events = getEventsForDate(date);
+                                                    if (events.length > 0) {
+                                                        return (
+                                                            <div className="calendar-events">
+                                                                {events.map(event => (
+                                                                    <div
+                                                                        key={event.id}
+                                                                        className={`calendar-event ${event.status.toLowerCase()}`}
+                                                                        title={`${event.location} - ${event.time}`}
+                                                                    >
+                                                                        {event.wasteType}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    }
+                                                }
+                                                return null;
+                                            }}
+                                        />
                                     </div>
 
-                                    <div className="calendar-grid">
-                                        {/* Calendar Headers */}
-                                        <div className="calendar-day-header">Sun</div>
-                                        <div className="calendar-day-header">Mon</div>
-                                        <div className="calendar-day-header">Tue</div>
-                                        <div className="calendar-day-header">Wed</div>
-                                        <div className="calendar-day-header">Thu</div>
-                                        <div className="calendar-day-header">Fri</div>
-                                        <div className="calendar-day-header">Sat</div>
-
-                                        {/* Calendar Days */}
-                                        {Array.from({ length: 35 }, (_, i) => {
-                                            const day = i + 1;
-                                            const hasEvents = scheduleData.collections.some(event =>
-                                                new Date(event.date).getDate() === day
-                                            );
-
-                                            return (
-                                                <div key={i} className={`calendar-day ${hasEvents ? '' : 'empty'}`}>
-                                                    <div className="day-number">{day}</div>
-                                                    {hasEvents && (
-                                                        <div className="day-events">
-                                                            {scheduleData.collections
-                                                                .filter(event => new Date(event.date).getDate() === day)
-                                                                .map(event => (
-                                                                    <div key={event.id} className={`calendar-event ${event.title.toLowerCase().includes('collection') ? 'collection' : ''}`}>
-                                                                        {event.title}
-                                                                    </div>
-                                                                ))
-                                                            }
+                                    {/* Selected Date Events */}
+                                    <div className="selected-date-events">
+                                        <h3>Collections for {selectedDate.toLocaleDateString()}</h3>
+                                        {getEventsForDate(selectedDate).length > 0 ? (
+                                            <div className="events-list">
+                                                {getEventsForDate(selectedDate).map(event => (
+                                                    <div key={event.id} className="event-card">
+                                                        <div className="event-header">
+                                                            <h4>{event.location}</h4>
+                                                            <span className={`status-badge ${event.status.toLowerCase()}`}>
+                                                                {event.status}
+                                                            </span>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+                                                        <div className="event-details">
+                                                            <p><strong>Time:</strong> {event.time}</p>
+                                                            <p><strong>Waste Type:</strong> {event.wasteType}</p>
+                                                            <p><strong>Vehicle:</strong> {event.assignedVehicle}</p>
+                                                            <p><strong>Driver:</strong> {event.assignedDriver}</p>
+                                                        </div>
+                                                        <div className="event-actions">
+                                                            <button
+                                                                className="action-btn edit"
+                                                                onClick={() => handleEditClick(event)}
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                className="action-btn view"
+                                                                onClick={() => {/* Add view details handler */ }}
+                                                            >
+                                                                View Details
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="no-events">No collections scheduled for this date</p>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -1756,23 +1722,19 @@ const WasteCollectionHome = () => {
 
                                                 <div className="schedule-item-details">
                                                     <div className="detail-row">
-                                                        <span className="detail-label">Date:</span>
+                                                        <span className="detail-label">Date</span>
                                                         <span className="detail-value">{item.date}</span>
                                                     </div>
                                                     <div className="detail-row">
-                                                        <span className="detail-label">Time:</span>
-                                                        <span className="detail-value">{item.startTime} - {item.endTime}</span>
+                                                        <span className="detail-label">Time</span>
+                                                        <span className="detail-value">{item.time}</span>
                                                     </div>
                                                     <div className="detail-row">
-                                                        <span className="detail-label">Location:</span>
+                                                        <span className="detail-label">Location</span>
                                                         <span className="detail-value">{item.location}</span>
                                                     </div>
                                                     <div className="detail-row">
-                                                        <span className="detail-label">Assigned To:</span>
-                                                        <span className="detail-value">{item.assignedTo}</span>
-                                                    </div>
-                                                    <div className="detail-row">
-                                                        <span className="detail-label">Vehicle:</span>
+                                                        <span className="detail-label">Vehicle</span>
                                                         <span className="detail-value">{item.vehicle}</span>
                                                     </div>
                                                 </div>
@@ -2155,18 +2117,14 @@ const WasteCollectionHome = () => {
                                             />
                                         </div>
                                         <div className="form-group">
-                                            <label>Area:</label>
-                                            <select
-                                                name="area"
-                                                value={newResidentData.area}
+                                            <label>Postal Code:</label>
+                                            <input
+                                                type="text"
+                                                name="postalCode"
+                                                value={newResidentData.postalCode}
                                                 onChange={handleNewResidentChange}
-                                            >
-                                                <option value="Downtown">Downtown</option>
-                                                <option value="Suburban">Suburban</option>
-                                                <option value="Industrial">Industrial</option>
-                                                <option value="Residential">Residential</option>
-                                                <option value="Commercial">Commercial</option>
-                                            </select>
+                                                required
+                                            />
                                         </div>
                                         <div className="form-group">
                                             <label>Phone:</label>
@@ -2187,32 +2145,6 @@ const WasteCollectionHome = () => {
                                                 onChange={handleNewResidentChange}
                                                 required
                                             />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Collection Day:</label>
-                                            <select
-                                                name="collectionDay"
-                                                value={newResidentData.collectionDay}
-                                                onChange={handleNewResidentChange}
-                                            >
-                                                <option value="Monday">Monday</option>
-                                                <option value="Tuesday">Tuesday</option>
-                                                <option value="Wednesday">Wednesday</option>
-                                                <option value="Thursday">Thursday</option>
-                                                <option value="Friday">Friday</option>
-                                            </select>
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Waste Type:</label>
-                                            <select
-                                                name="wasteType"
-                                                value={newResidentData.wasteType}
-                                                onChange={handleNewResidentChange}
-                                            >
-                                                <option value="Mixed">Mixed</option>
-                                                <option value="Organic">Organic</option>
-                                                <option value="Recyclable">Recyclable</option>
-                                            </select>
                                         </div>
                                         <div className="form-actions">
                                             <button
@@ -2237,11 +2169,9 @@ const WasteCollectionHome = () => {
                                     <tr>
                                         <th>Name</th>
                                         <th>Address</th>
-                                        <th>Area</th>
+                                        <th>Postal Code</th>
                                         <th>Phone</th>
                                         <th>Email</th>
-                                        <th>Collection Day</th>
-                                        <th>Waste Type</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -2269,18 +2199,13 @@ const WasteCollectionHome = () => {
                                                         />
                                                     </td>
                                                     <td>
-                                                        <select
+                                                        <input
+                                                            type="text"
                                                             className="edit-input"
-                                                            name="area"
-                                                            value={editResidentForm.area}
+                                                            name="postalCode"
+                                                            value={editResidentForm.postalCode}
                                                             onChange={handleEditResidentChange}
-                                                        >
-                                                            <option value="Downtown">Downtown</option>
-                                                            <option value="Suburban">Suburban</option>
-                                                            <option value="Industrial">Industrial</option>
-                                                            <option value="Residential">Residential</option>
-                                                            <option value="Commercial">Commercial</option>
-                                                        </select>
+                                                        />
                                                     </td>
                                                     <td>
                                                         <input
@@ -2301,32 +2226,6 @@ const WasteCollectionHome = () => {
                                                         />
                                                     </td>
                                                     <td>
-                                                        <select
-                                                            className="edit-input"
-                                                            name="collectionDay"
-                                                            value={editResidentForm.collectionDay}
-                                                            onChange={handleEditResidentChange}
-                                                        >
-                                                            <option value="Monday">Monday</option>
-                                                            <option value="Tuesday">Tuesday</option>
-                                                            <option value="Wednesday">Wednesday</option>
-                                                            <option value="Thursday">Thursday</option>
-                                                            <option value="Friday">Friday</option>
-                                                        </select>
-                                                    </td>
-                                                    <td>
-                                                        <select
-                                                            className="edit-input"
-                                                            name="wasteType"
-                                                            value={editResidentForm.wasteType}
-                                                            onChange={handleEditResidentChange}
-                                                        >
-                                                            <option value="Mixed">Mixed</option>
-                                                            <option value="Organic">Organic</option>
-                                                            <option value="Recyclable">Recyclable</option>
-                                                        </select>
-                                                    </td>
-                                                    <td>
                                                         <button
                                                             className="action-btn save"
                                                             onClick={() => handleEditResidentSubmit(resident.id)}
@@ -2345,11 +2244,9 @@ const WasteCollectionHome = () => {
                                                 <>
                                                     <td>{resident.name}</td>
                                                     <td>{resident.address}</td>
-                                                    <td>{resident.area}</td>
+                                                    <td>{resident.postalCode}</td>
                                                     <td>{resident.phone}</td>
                                                     <td>{resident.email}</td>
-                                                    <td>{resident.collectionDay}</td>
-                                                    <td>{resident.wasteType}</td>
                                                     <td>
                                                         <button
                                                             className="action-btn edit"

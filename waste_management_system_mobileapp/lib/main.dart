@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
@@ -7,6 +6,8 @@ import 'screens/bulk_waste_details_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/schedule_pickup_screen.dart';
 import 'screens/waste_details_screen.dart';
+import 'screens/truck_home_screen.dart';
+import 'screens/role_selection_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -26,14 +27,15 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const SplashScreen(),
-        '/login': (context) => const LoginScreen(),
+        '/': (context) => const RoleSelectionScreen(),
+        '/login': (context) => const LoginScreen(role: 'resident'),
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const HomeScreen(),
         '/bulk-waste': (context) => const BulkWasteDetailsScreen(),
         '/profile': (context) => const ProfileScreen(),
         '/schedule-pickup': (context) => const SchedulePickupScreen(),
         '/waste-details': (context) => const WasteDetailsScreen(),
+        '/truck-home': (context) => const TruckHomeScreen(),
       },
     );
   }
