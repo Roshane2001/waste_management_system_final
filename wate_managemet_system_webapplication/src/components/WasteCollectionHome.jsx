@@ -19,8 +19,21 @@ const WasteCollectionHome = () => {
     const [scheduleView, setScheduleView] = useState('calendar');
     const [reportType, setReportType] = useState('collections');
     const [recyclingTab, setRecyclingTab] = useState('overview');
+    const [recyclingFilter, setRecyclingFilter] = useState('all');
     const [bulkCollectionTab, setBulkCollectionTab] = useState('requests');
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedMaterial, setSelectedMaterial] = useState(null);
+    const [recyclingProcess, setRecyclingProcess] = useState({
+        currentStep: 0,
+        steps: [
+            { id: 1, name: 'Collection', status: 'pending', completedAt: null },
+            { id: 2, name: 'Sorting', status: 'pending', completedAt: null },
+            { id: 3, name: 'Cleaning', status: 'pending', completedAt: null },
+            { id: 4, name: 'Processing', status: 'pending', completedAt: null },
+            { id: 5, name: 'Quality Check', status: 'pending', completedAt: null },
+            { id: 6, name: 'Packaging', status: 'pending', completedAt: null }
+        ]
+    });
 
     /**
      * Settings Data
@@ -1283,6 +1296,139 @@ const WasteCollectionHome = () => {
         console.log('Filters applied:', complaintFilters);
     };
 
+    const handleMaterialClick = (material) => {
+        setSelectedMaterial(material);
+        // Reset process steps when selecting a new material
+        setRecyclingProcess(prev => ({
+            ...prev,
+            currentStep: 0,
+            steps: prev.steps.map(step => ({
+                ...step,
+                status: 'pending',
+                completedAt: null
+            }))
+        }));
+    };
+
+    const handleProcessUpdate = (stepId, newStatus) => {
+        const updatedMaterials = recyclingMaterials.map(material => {
+            if (material.id === selectedMaterial?.id) {
+                const updatedSteps = material.processingStatus.steps.map(step => {
+                    if (step.id === stepId) {
+                        const now = new Date().toISOString().slice(0, 16);
+                        return {
+                            ...step,
+                            status: newStatus,
+                            startTime: newStatus === 'in-progress' ? now : step.startTime,
+                            endTime: newStatus === 'completed' ? now : step.endTime
+                        };
+                    }
+                    return step;
+                });
+
+                return {
+                    ...material,
+                    processingStatus: {
+                        ...material.processingStatus,
+                        currentStep: newStatus === 'completed' ?
+                            material.processingStatus.steps.find(s => s.id === stepId).id :
+                            material.processingStatus.currentStep,
+                        steps: updatedSteps
+                    }
+                };
+            }
+            return material;
+        });
+
+        setRecyclingMaterials(updatedMaterials);
+    };
+
+    // Add this after the other state declarations
+    const [recyclingMaterials, setRecyclingMaterials] = useState([
+        {
+            id: 1,
+            name: 'Plastic Bottles',
+            category: 'Plastic',
+            quantity: '500 kg',
+            status: 'pending',
+            description: 'Mixed plastic bottles from residential collection',
+            lastUpdated: '2024-03-15 10:30',
+            recyclingCenter: 'Central Recycling Facility',
+            processingStatus: {
+                currentStep: 'Collection',
+                steps: [
+                    { id: 'Collection', status: 'completed', startTime: '2024-03-15 09:00', endTime: '2024-03-15 10:30' },
+                    { id: 'Sorting', status: 'in-progress', startTime: '2024-03-15 10:30', endTime: null },
+                    { id: 'Cleaning', status: 'pending', startTime: null, endTime: null },
+                    { id: 'Processing', status: 'pending', startTime: null, endTime: null },
+                    { id: 'Quality Check', status: 'pending', startTime: null, endTime: null },
+                    { id: 'Packaging', status: 'pending', startTime: null, endTime: null }
+                ]
+            }
+        },
+        // ... existing materials ...
+    ]);
+
+    const [schedules, setSchedules] = useState([
+        {
+            id: 1,
+            date: '2024-03-20',
+            time: '09:00',
+            location: 'Main Street Area',
+            type: 'Regular Collection',
+            status: 'Scheduled',
+            vehicle: 'Truck-001',
+            notes: 'Regular household waste collection'
+        },
+        {
+            id: 2,
+            date: '2024-03-21',
+            time: '10:30',
+            location: 'Downtown Area',
+            type: 'Bulk Collection',
+            status: 'Scheduled',
+            vehicle: 'Truck-002',
+            notes: 'Large item collection'
+        }
+    ]);
+
+    const [showScheduleModal, setShowScheduleModal] = useState(false);
+    const [newSchedule, setNewSchedule] = useState({
+        date: '',
+        time: '',
+        location: '',
+        type: 'Regular Collection',
+        vehicle: '',
+        notes: ''
+    });
+
+    const handleScheduleSubmit = (e) => {
+        e.preventDefault();
+        const schedule = {
+            id: schedules.length + 1,
+            ...newSchedule,
+            status: 'Scheduled'
+        };
+        setSchedules([...schedules, schedule]);
+        setShowScheduleModal(false);
+        setNewSchedule({
+            date: '',
+            time: '',
+            location: '',
+            type: 'Regular Collection',
+            vehicle: '',
+            notes: ''
+        });
+    };
+
+    const [showTruckLocation, setShowTruckLocation] = useState(false);
+    const [selectedTruck, setSelectedTruck] = useState(null);
+
+    const handleTruckLocationClick = (vehicle) => {
+        setSelectedTruck(vehicle);
+        setShowTruckLocation(true);
+    };
+
     /**
      * Component Render
      * 
@@ -1709,99 +1855,202 @@ const WasteCollectionHome = () => {
                     {/* Schedule Tab */}
                     {activeTab === 'schedule' && (
                         <div className="schedule-section">
-                            <h2>Schedule</h2>
-                            <div className="schedule-controls">
-                                <div className="schedule-view-options">
-                                    <button
-                                        className={`view-btn ${scheduleView === 'calendar' ? 'active' : ''}`}
-                                        onClick={() => setScheduleView('calendar')}
-                                    >
-                                        Calendar View
-                                    </button>
-                                    <button
-                                        className={`view-btn ${scheduleView === 'list' ? 'active' : ''}`}
-                                        onClick={() => setScheduleView('list')}
-                                    >
-                                        List View
+                            <div className="section-header">
+                                <h2>Collection Schedule</h2>
+                                <div className="schedule-controls">
+                                    <div className="view-toggle">
+                                        <button
+                                            className={`toggle-btn ${scheduleView === 'calendar' ? 'active' : ''}`}
+                                            onClick={() => setScheduleView('calendar')}
+                                        >
+                                            Calendar View
+                                        </button>
+                                        <button
+                                            className={`toggle-btn ${scheduleView === 'list' ? 'active' : ''}`}
+                                            onClick={() => setScheduleView('list')}
+                                        >
+                                            List View
+                                        </button>
+                                    </div>
+                                    <button className="add-schedule-btn" onClick={() => setShowScheduleModal(true)}>
+                                        Add New Schedule
                                     </button>
                                 </div>
                             </div>
 
                             {scheduleView === 'calendar' ? (
-                                <div className="calendar-container">
+                                <div className="calendar-view">
                                     <Calendar
                                         onChange={setSelectedDate}
                                         value={selectedDate}
                                         className="waste-calendar"
                                     />
-                                    <div className="schedule-details">
-                                        <h3>Schedule Details for {selectedDate.toLocaleDateString()}</h3>
-                                        <div className="schedule-items">
-                                            {getEventsForDate(selectedDate).map(event => (
-                                                <div key={event.id} className="schedule-item">
-                                                    <div className="schedule-item-header">
-                                                        <h4>{event.type}</h4>
-                                                        <span className={`status-badge ${event.status.toLowerCase()}`}>
-                                                            {event.status}
-                                                        </span>
-                                                    </div>
-                                                    <div className="schedule-item-details">
-                                                        <div className="detail-row">
-                                                            <span className="label">Time:</span>
-                                                            <span className="value">{event.time}</span>
-                                                        </div>
-                                                        <div className="detail-row">
-                                                            <span className="label">Area:</span>
-                                                            <span className="value">{event.area}</span>
-                                                        </div>
-                                                        <div className="detail-row">
-                                                            <span className="label">Vehicle:</span>
-                                                            <span className="value">{event.vehicle}</span>
-                                                        </div>
-                                                        <div className="detail-row">
-                                                            <span className="label">Notes:</span>
-                                                            <span className="value">{event.notes}</span>
+                                    <div className="selected-date-schedules">
+                                        <h3>Schedules for {selectedDate.toLocaleDateString()}</h3>
+                                        <div className="schedule-list">
+                                            {schedules
+                                                .filter(schedule => schedule.date === selectedDate.toISOString().split('T')[0])
+                                                .map(schedule => (
+                                                    <div key={schedule.id} className="schedule-card">
+                                                        <div className="schedule-time">{schedule.time}</div>
+                                                        <div className="schedule-details">
+                                                            <h4>{schedule.type}</h4>
+                                                            <p><strong>Location:</strong> {schedule.location}</p>
+                                                            <p><strong>Vehicle:</strong> {schedule.vehicle}</p>
+                                                            <p><strong>Status:</strong> {schedule.status}</p>
+                                                            {schedule.notes && <p><strong>Notes:</strong> {schedule.notes}</p>}
                                                         </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                ))}
                                         </div>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="schedule-list">
-                                    {collections.map(collection => (
-                                        <div key={collection.id} className="schedule-item">
-                                            <div className="schedule-item-header">
-                                                <h4>{collection.type}</h4>
-                                                <span className={`status-badge ${collection.status.toLowerCase()}`}>
-                                                    {collection.status}
-                                                </span>
+                                <div className="list-view">
+                                    <div className="schedule-filters">
+                                        <select
+                                            className="filter-select"
+                                            onChange={(e) => {
+                                                const filtered = e.target.value === 'all'
+                                                    ? schedules
+                                                    : schedules.filter(s => s.type === e.target.value);
+                                                setSchedules(filtered);
+                                            }}
+                                        >
+                                            <option value="all">All Types</option>
+                                            <option value="Regular Collection">Regular Collection</option>
+                                            <option value="Bulk Collection">Bulk Collection</option>
+                                            <option value="Special Collection">Special Collection</option>
+                                        </select>
+                                        <select
+                                            className="filter-select"
+                                            onChange={(e) => {
+                                                const filtered = e.target.value === 'all'
+                                                    ? schedules
+                                                    : schedules.filter(s => s.status === e.target.value);
+                                                setSchedules(filtered);
+                                            }}
+                                        >
+                                            <option value="all">All Status</option>
+                                            <option value="Scheduled">Scheduled</option>
+                                            <option value="In Progress">In Progress</option>
+                                            <option value="Completed">Completed</option>
+                                            <option value="Cancelled">Cancelled</option>
+                                        </select>
+                                    </div>
+                                    <div className="schedule-list">
+                                        {schedules.map(schedule => (
+                                            <div key={schedule.id} className="schedule-card">
+                                                <div className="schedule-header">
+                                                    <div className="schedule-date-time">
+                                                        <span className="date">{schedule.date}</span>
+                                                        <span className="time">{schedule.time}</span>
+                                                    </div>
+                                                    <span className={`status-badge ${schedule.status.toLowerCase()}`}>
+                                                        {schedule.status}
+                                                    </span>
+                                                </div>
+                                                <div className="schedule-details">
+                                                    <h4>{schedule.type}</h4>
+                                                    <p><strong>Location:</strong> {schedule.location}</p>
+                                                    <p><strong>Vehicle:</strong> {schedule.vehicle}</p>
+                                                    {schedule.notes && <p><strong>Notes:</strong> {schedule.notes}</p>}
+                                                </div>
+                                                <div className="schedule-actions">
+                                                    <button className="action-btn edit">Edit</button>
+                                                    <button className="action-btn delete">Cancel</button>
+                                                    <button
+                                                        className="action-btn location"
+                                                        onClick={() => handleTruckLocationClick(schedule.vehicle)}
+                                                    >
+                                                        Truck Live Location
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="schedule-item-details">
-                                                <div className="detail-row">
-                                                    <span className="label">Date:</span>
-                                                    <span className="value">{collection.date}</span>
-                                                </div>
-                                                <div className="detail-row">
-                                                    <span className="label">Time:</span>
-                                                    <span className="value">{collection.time}</span>
-                                                </div>
-                                                <div className="detail-row">
-                                                    <span className="label">Area:</span>
-                                                    <span className="value">{collection.area}</span>
-                                                </div>
-                                                <div className="detail-row">
-                                                    <span className="label">Vehicle:</span>
-                                                    <span className="value">{collection.vehicle}</span>
-                                                </div>
-                                                <div className="detail-row">
-                                                    <span className="label">Notes:</span>
-                                                    <span className="value">{collection.notes}</span>
-                                                </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Add Schedule Modal */}
+                            {showScheduleModal && (
+                                <div className="modal-overlay">
+                                    <div className="modal-content">
+                                        <h3>Add New Schedule</h3>
+                                        <form onSubmit={handleScheduleSubmit}>
+                                            <div className="form-group">
+                                                <label htmlFor="date">Date</label>
+                                                <input
+                                                    type="date"
+                                                    id="date"
+                                                    value={newSchedule.date}
+                                                    onChange={(e) => setNewSchedule({ ...newSchedule, date: e.target.value })}
+                                                    required
+                                                />
                                             </div>
-                                        </div>
-                                    ))}
+                                            <div className="form-group">
+                                                <label htmlFor="time">Time</label>
+                                                <input
+                                                    type="time"
+                                                    id="time"
+                                                    value={newSchedule.time}
+                                                    onChange={(e) => setNewSchedule({ ...newSchedule, time: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label htmlFor="location">Location</label>
+                                                <input
+                                                    type="text"
+                                                    id="location"
+                                                    value={newSchedule.location}
+                                                    onChange={(e) => setNewSchedule({ ...newSchedule, location: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label htmlFor="type">Collection Type</label>
+                                                <select
+                                                    id="type"
+                                                    value={newSchedule.type}
+                                                    onChange={(e) => setNewSchedule({ ...newSchedule, type: e.target.value })}
+                                                    required
+                                                >
+                                                    <option value="Regular Collection">Regular Collection</option>
+                                                    <option value="Bulk Collection">Bulk Collection</option>
+                                                    <option value="Special Collection">Special Collection</option>
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label htmlFor="vehicle">Vehicle</label>
+                                                <input
+                                                    type="text"
+                                                    id="vehicle"
+                                                    value={newSchedule.vehicle}
+                                                    onChange={(e) => setNewSchedule({ ...newSchedule, vehicle: e.target.value })}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label htmlFor="notes">Notes</label>
+                                                <textarea
+                                                    id="notes"
+                                                    value={newSchedule.notes}
+                                                    onChange={(e) => setNewSchedule({ ...newSchedule, notes: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="modal-actions">
+                                                <button type="submit" className="btn-primary">Add Schedule</button>
+                                                <button
+                                                    type="button"
+                                                    className="btn-secondary"
+                                                    onClick={() => setShowScheduleModal(false)}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -2988,140 +3237,183 @@ const WasteCollectionHome = () => {
 
                     {/* Recycling Tab */}
                     {activeTab === 'recycling' && (
-                        <div className="recycling">
-                            <h2>Recycling Center</h2>
-                            <div className="recycling-stats-summary">
-                                <div className="stat-card">
-                                    <span className="stat-icon">♻️</span>
-                                    <div className="stat-info">
-                                        <h3>Today's Recycling</h3>
-                                        <p className="stat-value">2,450 kg</p>
-                                        <p className="stat-change positive">+15% from yesterday</p>
-                                    </div>
-                                </div>
-                                <div className="stat-card">
-                                    <span className="stat-icon">⚡</span>
-                                    <div className="stat-info">
-                                        <h3>Processing Rate</h3>
-                                        <p className="stat-value">85%</p>
-                                        <p className="stat-change positive">+5% from last week</p>
-                                    </div>
-                                </div>
-                                <div className="stat-card">
-                                    <span className="stat-icon">⭐</span>
-                                    <div className="stat-info">
-                                        <h3>Quality Score</h3>
-                                        <p className="stat-value">92/100</p>
-                                        <p className="stat-change positive">+2 points</p>
-                                    </div>
+                        <div className="recycling-section">
+                            <div className="recycling-controls">
+                                <h2>Recycling Management</h2>
+                                <div className="recycling-filters">
+                                    <select
+                                        value={recyclingFilter}
+                                        onChange={(e) => setRecyclingFilter(e.target.value)}
+                                        className="filter-select"
+                                    >
+                                        <option value="all">All Materials</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="in-progress">In Progress</option>
+                                        <option value="completed">Completed</option>
+                                    </select>
+                                    <select
+                                        value={recyclingTab}
+                                        onChange={(e) => setRecyclingTab(e.target.value)}
+                                        className="view-select"
+                                    >
+                                        <option value="overview">Overview</option>
+                                        <option value="process-updates">Process Updates</option>
+                                        <option value="centers">Recycling Centers</option>
+                                    </select>
                                 </div>
                             </div>
 
-                            {/* Recycling Process Section */}
-                            <div className="recycling-process">
-                                <h3>Recycling Process Stages</h3>
-                                <div className="process-stages">
-                                    <div className="process-stage">
-                                        <div className="stage-header">
-                                            <span className="stage-icon">🚛</span>
-                                            <h4>Collection</h4>
-                                        </div>
-                                        <div className="stage-content">
-                                            <p>Waste collection from residential and commercial areas</p>
-                                            <div className="stage-stats">
-                                                <div className="stat">
-                                                    <span className="label">Today's Collection</span>
-                                                    <span className="value">1,200 kg</span>
+                            {recyclingTab === 'overview' && (
+                                <div className="materials-list">
+                                    {recyclingMaterials
+                                        .filter(material =>
+                                            recyclingFilter === 'all' ||
+                                            material.status.toLowerCase() === recyclingFilter
+                                        )
+                                        .map(material => (
+                                            <div
+                                                key={material.id}
+                                                className={`material-card ${selectedMaterial?.id === material.id ? 'selected' : ''}`}
+                                                onClick={() => handleMaterialClick(material)}
+                                            >
+                                                <div className="material-header">
+                                                    <h3>{material.name}</h3>
+                                                    <span className="material-category">{material.category}</span>
                                                 </div>
-                                                <div className="stat">
-                                                    <span className="label">Vehicles Active</span>
-                                                    <span className="value">5/8</span>
+                                                <div className="material-details">
+                                                    <div>
+                                                        <strong>Quantity:</strong> {material.quantity}
+                                                    </div>
+                                                    <div>
+                                                        <strong>Status:</strong>
+                                                        <span className={`status-badge ${material.status.toLowerCase()}`}>
+                                                            {material.status}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <strong>Recycling Center:</strong> {material.recyclingCenter}
+                                                    </div>
+                                                    <div>
+                                                        <strong>Current Step:</strong> {material.processingStatus.currentStep}
+                                                    </div>
+                                                    <div>
+                                                        <strong>Last Updated:</strong> {material.lastUpdated}
+                                                    </div>
                                                 </div>
+                                                <p className="material-description">{material.description}</p>
                                             </div>
-                                        </div>
-                                    </div>
+                                        ))}
+                                </div>
+                            )}
 
-                                    <div className="process-stage">
-                                        <div className="stage-header">
-                                            <span className="stage-icon">📦</span>
-                                            <h4>Sorting</h4>
-                                        </div>
-                                        <div className="stage-content">
-                                            <p>Initial sorting of recyclable materials</p>
-                                            <div className="stage-stats">
-                                                <div className="stat">
-                                                    <span className="label">Today's Sorted</span>
-                                                    <span className="value">850 kg</span>
-                                                </div>
-                                                <div className="stat">
-                                                    <span className="label">Efficiency</span>
-                                                    <span className="value">95%</span>
-                                                </div>
+                            {recyclingTab === 'process-updates' && selectedMaterial && (
+                                <div className="process-steps">
+                                    {selectedMaterial.processingStatus.steps.map((step) => (
+                                        <div key={step.id} className={`process-step ${step.status === 'in-progress' ? 'current' : ''}`}>
+                                            <div className="step-header">
+                                                <h3>{step.id}</h3>
+                                                <span className={`status-badge ${step.status}`}>
+                                                    {step.status.charAt(0).toUpperCase() + step.status.slice(1)}
+                                                </span>
+                                            </div>
+                                            <div className="step-timing">
+                                                {step.startTime && (
+                                                    <div className="time-info">
+                                                        <span className="time-label">Start:</span>
+                                                        <span className="time-value">{new Date(step.startTime).toLocaleString()}</span>
+                                                    </div>
+                                                )}
+                                                {step.endTime && (
+                                                    <div className="time-info">
+                                                        <span className="time-label">End:</span>
+                                                        <span className="time-value">{new Date(step.endTime).toLocaleString()}</span>
+                                                    </div>
+                                                )}
+                                                {step.startTime && step.endTime && (
+                                                    <div className="time-info">
+                                                        <span className="time-label">Duration:</span>
+                                                        <span className="time-value">
+                                                            {calculateDuration(step.startTime, step.endTime)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <p className="step-description">
+                                                {getStepDescription(step.id)}
+                                            </p>
+                                            <div className="step-actions">
+                                                {step.status === 'pending' && (
+                                                    <button
+                                                        className="btn-primary"
+                                                        onClick={() => handleProcessUpdate(step.id, 'in-progress')}
+                                                    >
+                                                        Start Process
+                                                    </button>
+                                                )}
+                                                {step.status === 'in-progress' && (
+                                                    <button
+                                                        className="btn-success"
+                                                        onClick={() => handleProcessUpdate(step.id, 'completed')}
+                                                    >
+                                                        Complete Step
+                                                    </button>
+                                                )}
+                                                {step.status === 'completed' && (
+                                                    <button
+                                                        className="btn-warning"
+                                                        onClick={() => handleProcessUpdate(step.id, 'in-progress')}
+                                                    >
+                                                        Reopen Step
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
-                                    </div>
+                                    ))}
+                                </div>
+                            )}
 
-                                    <div className="process-stage">
-                                        <div className="stage-header">
-                                            <span className="stage-icon">🔄</span>
-                                            <h4>Processing</h4>
-                                        </div>
-                                        <div className="stage-content">
-                                            <p>Material processing and preparation</p>
-                                            <div className="stage-stats">
-                                                <div className="stat">
-                                                    <span className="label">In Progress</span>
-                                                    <span className="value">400 kg</span>
+                            {recyclingTab === 'centers' && (
+                                <div className="recycling-centers">
+                                    <div className="centers-grid">
+                                        {Array.from(new Set(recyclingMaterials.map(m => m.recyclingCenter))).map(center => (
+                                            <div key={center} className="center-card">
+                                                <h3>{center}</h3>
+                                                <div className="center-stats">
+                                                    <div className="stat">
+                                                        <span className="stat-label">Active Materials</span>
+                                                        <span className="stat-value">
+                                                            {recyclingMaterials.filter(m => m.recyclingCenter === center).length}
+                                                        </span>
+                                                    </div>
+                                                    <div className="stat">
+                                                        <span className="stat-label">Total Quantity</span>
+                                                        <span className="stat-value">
+                                                            {recyclingMaterials
+                                                                .filter(m => m.recyclingCenter === center)
+                                                                .reduce((sum, m) => sum + parseInt(m.quantity), 0)} kg
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div className="stat">
-                                                    <span className="label">Completion Rate</span>
-                                                    <span className="value">85%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="process-stage">
-                                        <div className="stage-header">
-                                            <span className="stage-icon">📦</span>
-                                            <h4>Storage</h4>
-                                        </div>
-                                        <div className="stage-content">
-                                            <p>Storage of processed materials</p>
-                                            <div className="stage-stats">
-                                                <div className="stat">
-                                                    <span className="label">Current Stock</span>
-                                                    <span className="value">1,500 kg</span>
-                                                </div>
-                                                <div className="stat">
-                                                    <span className="label">Capacity</span>
-                                                    <span className="value">75%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="process-stage">
-                                        <div className="stage-header">
-                                            <span className="stage-icon">🚚</span>
-                                            <h4>Distribution</h4>
-                                        </div>
-                                        <div className="stage-content">
-                                            <p>Distribution to recycling facilities</p>
-                                            <div className="stage-stats">
-                                                <div className="stat">
-                                                    <span className="label">Today's Shipments</span>
-                                                    <span className="value">800 kg</span>
-                                                </div>
-                                                <div className="stat">
-                                                    <span className="label">Pending</span>
-                                                    <span className="value">200 kg</span>
+                                                <div className="center-materials">
+                                                    <h4>Current Materials</h4>
+                                                    <ul>
+                                                        {recyclingMaterials
+                                                            .filter(m => m.recyclingCenter === center)
+                                                            .map(material => (
+                                                                <li key={material.id}>
+                                                                    <span className="material-name">{material.name}</span>
+                                                                    <span className={`status-badge ${material.status.toLowerCase()}`}>
+                                                                        {material.status}
+                                                                    </span>
+                                                                </li>
+                                                            ))}
+                                                    </ul>
                                                 </div>
                                             </div>
-                                        </div>
+                                        ))}
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
 
@@ -3527,6 +3819,41 @@ const WasteCollectionHome = () => {
                     )}
                 </main>
             </div>
+
+            {/* Truck Location Modal */}
+            {showTruckLocation && (
+                <div className="modal-overlay">
+                    <div className="modal-content truck-location-modal">
+                        <div className="modal-header">
+                            <h3>Live Truck Location</h3>
+                            <button
+                                className="close-btn"
+                                onClick={() => setShowTruckLocation(false)}
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="truck-location-content">
+                            <div className="truck-info">
+                                <h4>Vehicle: {selectedTruck}</h4>
+                                <p>Current Status: Active</p>
+                            </div>
+                            <div className="map-container">
+                                {/* This would be replaced with an actual map component */}
+                                <div className="map-placeholder">
+                                    <p>Map showing truck location would be displayed here</p>
+                                    <p>Current Location: 123 Main St, City</p>
+                                    <p>Last Updated: {new Date().toLocaleTimeString()}</p>
+                                </div>
+                            </div>
+                            <div className="truck-actions">
+                                <button className="btn-primary">Refresh Location</button>
+                                <button className="btn-secondary">Contact Driver</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './RecyclingCenterHome.css';
 
 /**
@@ -16,10 +16,64 @@ import './RecyclingCenterHome.css';
  * @returns {JSX.Element} The rendered recycling center dashboard
  */
 const RecyclingCenterHome = () => {
+    const navigate = useNavigate();
     // State to track the active tab in the sidebar navigation
     const [activeTab, setActiveTab] = useState('dashboard');
-    // State to track the selected view in the schedule tab
-    const [scheduleView, setScheduleView] = useState('calendar');
+    const [selectedMaterial, setSelectedMaterial] = useState(null);
+    const [showNewBulkModal, setShowNewBulkModal] = useState(false);
+    const [newBulkData, setNewBulkData] = useState({
+        name: '',
+        type: '',
+        quantity: '',
+        description: ''
+    });
+    const [recyclingProcess, setRecyclingProcess] = useState({
+        currentStep: 1,
+        steps: [
+            {
+                id: 1,
+                name: 'Collection',
+                status: 'completed',
+                description: 'Waste materials are collected from various sources',
+                completedAt: '2024-03-15 09:00'
+            },
+            {
+                id: 2,
+                name: 'Sorting',
+                status: 'in-progress',
+                description: 'Materials are sorted by type and quality',
+                completedAt: null
+            },
+            {
+                id: 3,
+                name: 'Cleaning',
+                status: 'pending',
+                description: 'Materials are cleaned and prepared for processing',
+                completedAt: null
+            },
+            {
+                id: 4,
+                name: 'Processing',
+                status: 'pending',
+                description: 'Materials are processed into raw materials',
+                completedAt: null
+            },
+            {
+                id: 5,
+                name: 'Quality Check',
+                status: 'pending',
+                description: 'Processed materials undergo quality inspection',
+                completedAt: null
+            },
+            {
+                id: 6,
+                name: 'Packaging',
+                status: 'pending',
+                description: 'Materials are packaged for distribution',
+                completedAt: null
+            }
+        ]
+    });
 
     /**
      * Recycling Statistics
@@ -206,6 +260,147 @@ const RecyclingCenterHome = () => {
         ]
     };
 
+    // Mock data for recycling materials
+    const recyclingMaterials = [
+        {
+            id: 1,
+            name: 'Plastic',
+            type: 'PET',
+            quantity: '500 kg',
+            status: 'In Progress',
+            lastUpdated: '2024-03-15',
+            description: 'Clear PET bottles and containers'
+        },
+        {
+            id: 2,
+            name: 'Paper',
+            type: 'Mixed',
+            quantity: '300 kg',
+            status: 'Pending',
+            lastUpdated: '2024-03-14',
+            description: 'Mixed paper and cardboard'
+        },
+        {
+            id: 3,
+            name: 'Glass',
+            type: 'Clear',
+            quantity: '200 kg',
+            status: 'Completed',
+            lastUpdated: '2024-03-13',
+            description: 'Clear glass bottles and jars'
+        },
+        {
+            id: 4,
+            name: 'Metal',
+            type: 'Aluminum',
+            quantity: '150 kg',
+            status: 'In Progress',
+            lastUpdated: '2024-03-15',
+            description: 'Aluminum cans and containers'
+        },
+        {
+            id: 5,
+            name: 'Electronics',
+            type: 'Mixed',
+            quantity: '100 kg',
+            status: 'Pending',
+            lastUpdated: '2024-03-14',
+            description: 'Mixed electronic waste'
+        }
+    ];
+
+    const handleMaterialClick = (material) => {
+        setSelectedMaterial(material);
+        // Reset process steps when selecting a new material
+        setRecyclingProcess(prev => ({
+            ...prev,
+            currentStep: 1,
+            steps: prev.steps.map(step => ({
+                ...step,
+                status: step.id === 1 ? 'in-progress' : 'pending',
+                completedAt: null
+            }))
+        }));
+    };
+
+    const handleProcessUpdate = (stepId, newStatus) => {
+        setRecyclingProcess(prev => {
+            const updatedSteps = prev.steps.map(step => {
+                if (step.id === stepId) {
+                    return {
+                        ...step,
+                        status: newStatus,
+                        completedAt: newStatus === 'completed' ? new Date().toISOString() : null
+                    };
+                }
+                return step;
+            });
+
+            // Update current step
+            let newCurrentStep = prev.currentStep;
+            if (newStatus === 'completed' && stepId === prev.currentStep) {
+                newCurrentStep = Math.min(prev.currentStep + 1, prev.steps.length);
+            }
+
+            return {
+                ...prev,
+                currentStep: newCurrentStep,
+                steps: updatedSteps
+            };
+        });
+    };
+
+    const handleNewBulkChange = (e) => {
+        const { name, value } = e.target;
+        setNewBulkData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleNewBulkSubmit = (e) => {
+        e.preventDefault();
+
+        // Create a new bulk entry
+        const newBulk = {
+            id: recyclingMaterials.length + 1,
+            name: newBulkData.name,
+            type: newBulkData.type,
+            quantity: `${newBulkData.quantity} kg`,
+            status: 'Pending',
+            lastUpdated: new Date().toISOString().split('T')[0],
+            description: newBulkData.description,
+            processingStatus: {
+                currentStep: 'Collection',
+                steps: [
+                    { id: 'Collection', status: 'pending', startTime: null, endTime: null },
+                    { id: 'Sorting', status: 'pending', startTime: null, endTime: null },
+                    { id: 'Cleaning', status: 'pending', startTime: null, endTime: null },
+                    { id: 'Processing', status: 'pending', startTime: null, endTime: null },
+                    { id: 'Quality Check', status: 'pending', startTime: null, endTime: null },
+                    { id: 'Packaging', status: 'pending', startTime: null, endTime: null }
+                ]
+            }
+        };
+
+        // Add the new bulk to the materials list
+        setRecyclingMaterials(prev => [...prev, newBulk]);
+
+        // Reset the form
+        setNewBulkData({
+            name: '',
+            type: '',
+            quantity: '',
+            description: ''
+        });
+
+        // Close the modal
+        setShowNewBulkModal(false);
+
+        // Show success message (you can implement a toast or notification system)
+        alert('New recycling bulk added successfully!');
+    };
+
     /**
      * Component Render
      * 
@@ -233,18 +428,6 @@ const RecyclingCenterHome = () => {
                         </li>
                         <li className={activeTab === 'materials' ? 'active' : ''} onClick={() => setActiveTab('materials')}>
                             <span className="icon">♻️</span> Materials
-                        </li>
-                        <li className={activeTab === 'schedule' ? 'active' : ''} onClick={() => setActiveTab('schedule')}>
-                            <span className="icon">📅</span> Schedule
-                        </li>
-                        <li className={activeTab === 'processes' ? 'active' : ''} onClick={() => setActiveTab('processes')}>
-                            <span className="icon">⚙️</span> Processes
-                        </li>
-                        <li className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>
-                            <span className="icon">📈</span> Reports
-                        </li>
-                        <li className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}>
-                            <span className="icon">⚙️</span> Settings
                         </li>
                     </ul>
                 </nav>
@@ -368,279 +551,193 @@ const RecyclingCenterHome = () => {
 
                     {/* Materials Tab */}
                     {activeTab === 'materials' && (
-                        <div className="materials">
-                            <h2>Materials Management</h2>
-                            <p>Materials management content will go here.</p>
-                        </div>
-                    )}
-
-                    {/* Schedule Tab */}
-                    {activeTab === 'schedule' && (
-                        <div className="schedule">
-                            <h2>Schedule Management</h2>
-
-                            <div className="schedule-controls">
-                                <div className="schedule-view-options">
-                                    <button
-                                        className={`view-option-btn ${scheduleView === 'calendar' ? 'active' : ''}`}
-                                        onClick={() => setScheduleView('calendar')}
-                                    >
-                                        <span className="icon">📅</span> Calendar View
-                                    </button>
-                                    <button
-                                        className={`view-option-btn ${scheduleView === 'list' ? 'active' : ''}`}
-                                        onClick={() => setScheduleView('list')}
-                                    >
-                                        <span className="icon">📋</span> List View
-                                    </button>
-                                </div>
-
-                                <div className="schedule-filters">
-                                    <select className="filter-select">
-                                        <option value="all">All Types</option>
-                                        <option value="collection">Collections</option>
-                                        <option value="processing">Processing</option>
-                                        <option value="staff">Staff</option>
-                                        <option value="equipment">Equipment</option>
-                                    </select>
-                                    <select className="filter-select">
-                                        <option value="all">All Status</option>
-                                        <option value="scheduled">Scheduled</option>
-                                        <option value="in-progress">In Progress</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="cancelled">Cancelled</option>
-                                    </select>
-                                    <input type="date" className="date-filter" />
-                                </div>
-
-                                <button className="add-schedule-btn">Add New Schedule</button>
+                        <div className="materials-section">
+                            <div className="section-header">
+                                <h2>Recycling Materials</h2>
+                                <button
+                                    className="add-bulk-btn"
+                                    onClick={() => setShowNewBulkModal(true)}
+                                >
+                                    Add New Recycling Bulk
+                                </button>
                             </div>
 
-                            {/* Calendar View */}
-                            {scheduleView === 'calendar' && (
-                                <div className="calendar-view">
-                                    <div className="calendar-header">
-                                        <button className="calendar-nav-btn">Previous</button>
-                                        <h3>March 2024</h3>
-                                        <button className="calendar-nav-btn">Next</button>
-                                    </div>
-
-                                    <div className="calendar-grid">
-                                        <div className="calendar-day-header">Sun</div>
-                                        <div className="calendar-day-header">Mon</div>
-                                        <div className="calendar-day-header">Tue</div>
-                                        <div className="calendar-day-header">Wed</div>
-                                        <div className="calendar-day-header">Thu</div>
-                                        <div className="calendar-day-header">Fri</div>
-                                        <div className="calendar-day-header">Sat</div>
-
-                                        {/* Calendar days would be dynamically generated here */}
-                                        {/* For demo purposes, we'll show a few days with events */}
-                                        <div className="calendar-day empty"></div>
-                                        <div className="calendar-day empty"></div>
-                                        <div className="calendar-day empty"></div>
-                                        <div className="calendar-day empty"></div>
-                                        <div className="calendar-day empty"></div>
-                                        <div className="calendar-day">
-                                            <div className="day-number">1</div>
-                                            <div className="day-events">
-                                                <div className="calendar-event collection">Collection Route A</div>
+                            {/* Add New Bulk Modal */}
+                            {showNewBulkModal && (
+                                <div className="modal-overlay">
+                                    <div className="modal-content">
+                                        <h3>Add New Recycling Bulk</h3>
+                                        <form onSubmit={handleNewBulkSubmit}>
+                                            <div className="form-group">
+                                                <label htmlFor="name">Material Name</label>
+                                                <input
+                                                    type="text"
+                                                    id="name"
+                                                    name="name"
+                                                    value={newBulkData.name}
+                                                    onChange={handleNewBulkChange}
+                                                    required
+                                                />
                                             </div>
-                                        </div>
-                                        <div className="calendar-day">
-                                            <div className="day-number">2</div>
-                                            <div className="day-events">
-                                                <div className="calendar-event processing">Processing Batch A</div>
+                                            <div className="form-group">
+                                                <label htmlFor="type">Material Type</label>
+                                                <select
+                                                    id="type"
+                                                    name="type"
+                                                    value={newBulkData.type}
+                                                    onChange={handleNewBulkChange}
+                                                    required
+                                                >
+                                                    <option value="">Select Type</option>
+                                                    <option value="Plastic">Plastic</option>
+                                                    <option value="Paper">Paper</option>
+                                                    <option value="Glass">Glass</option>
+                                                    <option value="Metal">Metal</option>
+                                                    <option value="Electronics">Electronics</option>
+                                                </select>
                                             </div>
-                                        </div>
-
-                                        {/* More days would be here */}
-
-                                        <div className="calendar-day">
-                                            <div className="day-number">15</div>
-                                            <div className="day-events">
-                                                <div className="calendar-event collection">Plastic Collection</div>
-                                                <div className="calendar-event processing">Paper Processing</div>
+                                            <div className="form-group">
+                                                <label htmlFor="quantity">Quantity (kg)</label>
+                                                <input
+                                                    type="number"
+                                                    id="quantity"
+                                                    name="quantity"
+                                                    value={newBulkData.quantity}
+                                                    onChange={handleNewBulkChange}
+                                                    required
+                                                    min="1"
+                                                />
                                             </div>
-                                        </div>
-
-                                        <div className="calendar-day">
-                                            <div className="day-number">16</div>
-                                            <div className="day-events">
-                                                <div className="calendar-event collection">Plastic Collection - Route A</div>
-                                                <div className="calendar-event processing">Plastic Sorting - Batch PL-2024-001</div>
-                                                <div className="calendar-event staff">John Smith, Maria Garcia</div>
-                                                <div className="calendar-event equipment">Truck A-123</div>
+                                            <div className="form-group">
+                                                <label htmlFor="description">Description</label>
+                                                <textarea
+                                                    id="description"
+                                                    name="description"
+                                                    value={newBulkData.description}
+                                                    onChange={handleNewBulkChange}
+                                                    required
+                                                />
                                             </div>
-                                        </div>
-
-                                        <div className="calendar-day">
-                                            <div className="day-number">17</div>
-                                            <div className="day-events">
-                                                <div className="calendar-event collection">Glass Collection - Route C</div>
-                                                <div className="calendar-event staff">Michael Brown, Lisa Wong</div>
-                                                <div className="calendar-event equipment">Truck C-789</div>
+                                            <div className="modal-actions">
+                                                <button type="submit" className="btn-primary">Add Bulk</button>
+                                                <button
+                                                    type="button"
+                                                    className="btn-secondary"
+                                                    onClick={() => setShowNewBulkModal(false)}
+                                                >
+                                                    Cancel
+                                                </button>
                                             </div>
-                                        </div>
-
-                                        {/* More days would be here */}
+                                        </form>
                                     </div>
                                 </div>
                             )}
 
-                            {/* List View */}
-                            {scheduleView === 'list' && (
-                                <div className="list-view">
-                                    <div className="schedule-tabs">
-                                        <button className="schedule-tab active">Collections</button>
-                                        <button className="schedule-tab">Processing</button>
-                                        <button className="schedule-tab">Staff</button>
-                                        <button className="schedule-tab">Equipment</button>
+                            {/* Materials List */}
+                            <div className="materials-list">
+                                {recyclingMaterials.map(material => (
+                                    <div
+                                        key={material.id}
+                                        className={`material-card ${selectedMaterial?.id === material.id ? 'selected' : ''}`}
+                                        onClick={() => handleMaterialClick(material)}
+                                    >
+                                        <div className="material-header">
+                                            <h3>{material.name}</h3>
+                                            <span className={`status-badge ${material.status.toLowerCase().replace(' ', '-')}`}>
+                                                {material.status}
+                                            </span>
+                                        </div>
+                                        <div className="material-details">
+                                            <div className="detail-item">
+                                                <span className="detail-label">Type:</span>
+                                                <span className="detail-value">{material.type}</span>
+                                            </div>
+                                            <div className="detail-item">
+                                                <span className="detail-label">Quantity:</span>
+                                                <span className="detail-value">{material.quantity}</span>
+                                            </div>
+                                            <div className="detail-item">
+                                                <span className="detail-label">Last Updated:</span>
+                                                <span className="detail-value">{material.lastUpdated}</span>
+                                            </div>
+                                        </div>
+                                        <p className="material-description">{material.description}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Recycling Process Section */}
+                            {selectedMaterial && (
+                                <div className="recycling-process-section">
+                                    <div className="section-header">
+                                        <h2>Recycling Process - {selectedMaterial.name}</h2>
+                                        <div className="process-overview">
+                                            <div className="process-progress">
+                                                <div
+                                                    className="progress-bar"
+                                                    style={{ width: `${(recyclingProcess.currentStep / recyclingProcess.steps.length) * 100}%` }}
+                                                />
+                                                <span className="progress-text">
+                                                    Step {recyclingProcess.currentStep} of {recyclingProcess.steps.length}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <div className="schedule-list">
-                                        {scheduleData.collections.map(item => (
-                                            <div className="schedule-item" key={item.id}>
-                                                <div className="schedule-item-header">
-                                                    <h3>{item.title}</h3>
-                                                    <span className={`status-badge ${item.status.toLowerCase()}`}>
-                                                        {item.status}
+                                    <div className="process-steps">
+                                        {recyclingProcess.steps.map((step) => (
+                                            <div
+                                                key={step.id}
+                                                className={`process-step ${step.status} ${step.id === recyclingProcess.currentStep ? 'current' : ''}`}
+                                            >
+                                                <div className="step-header">
+                                                    <h3>{step.name}</h3>
+                                                    <span className={`status-badge ${step.status}`}>
+                                                        {step.status.charAt(0).toUpperCase() + step.status.slice(1)}
                                                     </span>
                                                 </div>
 
-                                                <div className="schedule-item-details">
-                                                    <div className="detail-row">
-                                                        <span className="detail-label">Date:</span>
-                                                        <span className="detail-value">{item.date}</span>
-                                                    </div>
-                                                    <div className="detail-row">
-                                                        <span className="detail-label">Time:</span>
-                                                        <span className="detail-value">{item.startTime} - {item.endTime}</span>
-                                                    </div>
-                                                    <div className="detail-row">
-                                                        <span className="detail-label">Location:</span>
-                                                        <span className="detail-value">{item.location}</span>
-                                                    </div>
-                                                    <div className="detail-row">
-                                                        <span className="detail-label">Assigned To:</span>
-                                                        <span className="detail-value">{item.assignedTo}</span>
-                                                    </div>
-                                                    <div className="detail-row">
-                                                        <span className="detail-label">Vehicle:</span>
-                                                        <span className="detail-value">{item.vehicle}</span>
-                                                    </div>
-                                                </div>
+                                                <p className="step-description">{step.description}</p>
 
-                                                <div className="schedule-item-actions">
-                                                    <button className="action-btn edit">Edit</button>
-                                                    <button className="action-btn view">View Details</button>
-                                                    <button className="action-btn delete">Cancel</button>
+                                                {step.completedAt && (
+                                                    <p className="step-completed">
+                                                        Completed: {new Date(step.completedAt).toLocaleString()}
+                                                    </p>
+                                                )}
+
+                                                <div className="step-actions">
+                                                    {step.id === recyclingProcess.currentStep && (
+                                                        <>
+                                                            <button
+                                                                className="btn btn-primary"
+                                                                onClick={() => handleProcessUpdate(step.id, 'in-progress')}
+                                                                disabled={step.status === 'in-progress'}
+                                                            >
+                                                                Start Step
+                                                            </button>
+                                                            <button
+                                                                className="btn btn-success"
+                                                                onClick={() => handleProcessUpdate(step.id, 'completed')}
+                                                                disabled={step.status !== 'in-progress'}
+                                                            >
+                                                                Complete Step
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {step.status === 'completed' && (
+                                                        <button
+                                                            className="btn btn-warning"
+                                                            onClick={() => handleProcessUpdate(step.id, 'in-progress')}
+                                                        >
+                                                            Reopen Step
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
-                        </div>
-                    )}
-
-                    {/* Processes Tab */}
-                    {activeTab === 'processes' && (
-                        <div className="processes">
-                            <h2>Recycling Processes</h2>
-
-                            <div className="process-controls">
-                                <div className="search-filter">
-                                    <input type="text" placeholder="Search processes..." className="search-input" />
-                                    <select className="filter-select">
-                                        <option value="all">All Materials</option>
-                                        <option value="plastic">Plastic</option>
-                                        <option value="paper">Paper</option>
-                                        <option value="glass">Glass</option>
-                                        <option value="metal">Metal</option>
-                                    </select>
-                                    <select className="filter-select">
-                                        <option value="all">All Stages</option>
-                                        <option value="collection">Collection</option>
-                                        <option value="sorting">Sorting</option>
-                                        <option value="processing">Processing</option>
-                                        <option value="completed">Completed</option>
-                                    </select>
-                                </div>
-                                <button className="add-process-btn">Add New Process</button>
-                            </div>
-
-                            <div className="process-list">
-                                {recyclingProcesses.map(process => (
-                                    <div className="process-card" key={process.id}>
-                                        <div className="process-header">
-                                            <div className="process-title">
-                                                <h3>{process.material} Recycling</h3>
-                                                <span className="batch-id">Batch: {process.batchId}</span>
-                                            </div>
-                                            <div className="process-status">
-                                                <span className={`status-badge ${process.currentStage.toLowerCase()}`}>
-                                                    {process.currentStage}
-                                                </span>
-                                                <span className="completion-date">
-                                                    Est. Completion: {process.estimatedCompletion}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="process-timeline">
-                                            {process.stages.map((stage, index) => (
-                                                <div className={`timeline-stage ${stage.status.toLowerCase().replace(' ', '-')}`} key={index}>
-                                                    <div className="stage-dot"></div>
-                                                    <div className="stage-line"></div>
-                                                    <div className="stage-content">
-                                                        <h4>{stage.name}</h4>
-                                                        {stage.date && <p className="stage-date">{stage.date}</p>}
-                                                        {stage.notes && <p className="stage-notes">{stage.notes}</p>}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className="process-details">
-                                            <div className="detail-item">
-                                                <span className="detail-label">Start Date:</span>
-                                                <span className="detail-value">{process.startDate}</span>
-                                            </div>
-                                            <div className="detail-item">
-                                                <span className="detail-label">Assigned Staff:</span>
-                                                <span className="detail-value">{process.assignedStaff}</span>
-                                            </div>
-                                            <div className="detail-item">
-                                                <span className="detail-label">Equipment:</span>
-                                                <span className="detail-value">{process.equipment}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="process-actions">
-                                            <button className="action-btn update">Update Status</button>
-                                            <button className="action-btn edit">Edit Process</button>
-                                            <button className="action-btn view">View Details</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Reports Tab */}
-                    {activeTab === 'reports' && (
-                        <div className="reports">
-                            <h2>Reports & Analytics</h2>
-                            <p>Reports and analytics content will go here.</p>
-                        </div>
-                    )}
-
-                    {/* Settings Tab */}
-                    {activeTab === 'settings' && (
-                        <div className="settings">
-                            <h2>Settings</h2>
-                            <p>Settings content will go here.</p>
                         </div>
                     )}
                 </main>
