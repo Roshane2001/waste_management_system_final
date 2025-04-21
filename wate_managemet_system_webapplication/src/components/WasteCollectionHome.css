@@ -1641,3 +1641,284 @@ textarea.form-input {
     background-color: #E8F5E9;
     color: #007D3C;
 }
+
+/* Recycling Section Styles */
+.recycling-section {
+    padding: 20px;
+}
+
+.recycling-controls {
+    margin-bottom: 20px;
+}
+
+.recycling-filters {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.filter-select,
+.view-select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    min-width: 150px;
+}
+
+.material-card {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.material-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.material-card.selected {
+    border: 2px solid #4CAF50;
+}
+
+.material-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.material-category {
+    background: #e0e0e0;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.material-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.material-description {
+    color: #666;
+    font-size: 0.9em;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 500;
+}
+
+.status-badge.pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.in-progress {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.status-badge.completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+/* Recycling Centers Styles */
+.recycling-centers {
+    padding: 20px 0;
+}
+
+.centers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.center-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.center-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.stat {
+    text-align: center;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.2em;
+    font-weight: 600;
+    color: #333;
+}
+
+.center-materials {
+    margin-top: 15px;
+}
+
+.center-materials h4 {
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.center-materials ul {
+    list-style: none;
+    padding: 0;
+}
+
+.center-materials li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.center-materials li:last-child {
+    border-bottom: none;
+}
+
+.material-name {
+    font-weight: 500;
+}
+
+/* Process Steps Styles */
+.process-steps {
+    display: grid;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.process-step {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 15px;
+}
+
+.process-step.current {
+    border: 2px solid #4CAF50;
+    background: #f8fff8;
+}
+
+.step-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.step-header h3 {
+    margin: 0;
+    color: #333;
+    font-size: 1.1em;
+}
+
+.step-description {
+    color: #666;
+    margin: 15px 0;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+.step-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn-primary,
+.btn-success,
+.btn-warning {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-warning {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+}
+
+.btn-warning:hover {
+    background-color: #e0a800;
+}
+
+/* Time Tracking Styles */
+.step-timing {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 10px 0;
+}
+
+.time-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.time-info:last-child {
+    margin-bottom: 0;
+}
+
+.time-label {
+    color: #666;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.time-value {
+    color: #333;
+    font-weight: 500;
+}
