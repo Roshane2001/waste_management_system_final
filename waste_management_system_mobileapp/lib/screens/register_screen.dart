@@ -14,8 +14,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _addressController = TextEditingController();
-  final _cityController = TextEditingController();
   final _postalCodeController = TextEditingController();
+  final _phoneController = TextEditingController();
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
 
   @override
   Widget build(BuildContext context) {
@@ -27,17 +29,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(24.0),
           child: Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Logo
                 Image.asset(
-                  'assets/images/logo.png',
-                  width: 100,
+                  'assets/logo.png',
                   height: 100,
+                  width: 100,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 const Text(
                   'Create Account',
                   style: TextStyle(
@@ -45,14 +49,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     fontWeight: FontWeight.bold,
                     color: Colors.green,
                   ),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
+
+                // Name Field
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Full Name',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
+                    prefixIcon: const Icon(Icons.person),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -62,12 +71,76 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
+
+                // Address Field
+                TextFormField(
+                  controller: _addressController,
+                  decoration: InputDecoration(
+                    labelText: 'Address',
+                    prefixIcon: const Icon(Icons.location_on),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  maxLines: 2,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your address';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Postal Code Field
+                TextFormField(
+                  controller: _postalCodeController,
+                  decoration: InputDecoration(
+                    labelText: 'Postal Code',
+                    prefixIcon: const Icon(Icons.markunread_mailbox),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter postal code';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Phone Field
+                TextFormField(
+                  controller: _phoneController,
+                  decoration: InputDecoration(
+                    labelText: 'Phone Number',
+                    prefixIcon: const Icon(Icons.phone),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  keyboardType: TextInputType.phone,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your phone number';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Email Field
                 TextFormField(
                   controller: _emailController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Email',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email),
+                    prefixIcon: const Icon(Icons.email),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
@@ -81,69 +154,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _addressController,
-                  decoration: const InputDecoration(
-                    labelText: 'Street Address',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.location_on),
-                  ),
-                  maxLines: 2,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your address';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _cityController,
-                        decoration: const InputDecoration(
-                          labelText: 'City',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.location_city),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your city';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _postalCodeController,
-                        decoration: const InputDecoration(
-                          labelText: 'Postal Code',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.markunread_mailbox),
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter postal code';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+
+                // Password Field
                 TextFormField(
                   controller: _passwordController,
-                  decoration: const InputDecoration(
+                  obscureText: !_isPasswordVisible,
+                  decoration: InputDecoration(
                     labelText: 'Password',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock),
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isPasswordVisible = !_isPasswordVisible;
+                        });
+                      },
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  obscureText: true,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter a password';
@@ -155,14 +189,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
+
+                // Confirm Password Field
                 TextFormField(
                   controller: _confirmPasswordController,
-                  decoration: const InputDecoration(
+                  obscureText: !_isConfirmPasswordVisible,
+                  decoration: InputDecoration(
                     labelText: 'Confirm Password',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock_outline),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isConfirmPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isConfirmPasswordVisible =
+                              !_isConfirmPasswordVisible;
+                        });
+                      },
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  obscureText: true,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please confirm your password';
@@ -174,33 +225,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                 ),
                 const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        // TODO: Implement registration logic
-                        Navigator.pushReplacementNamed(context, '/login');
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+
+                // Register Button
+                ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      // TODO: Implement registration logic
+                      Navigator.pushReplacementNamed(context, '/login');
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text(
-                      'REGISTER',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  ),
+                  child: const Text(
+                    'REGISTER',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // Login Link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -211,10 +263,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                       child: const Text(
                         'Login',
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(color: Colors.green),
                       ),
                     ),
                   ],
@@ -234,8 +283,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _addressController.dispose();
-    _cityController.dispose();
     _postalCodeController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 }
