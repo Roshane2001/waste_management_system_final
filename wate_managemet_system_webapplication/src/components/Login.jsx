@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Login.css';
+import logo from '../assets/logo.png';
 
 /**
  * Login Component
@@ -58,7 +59,7 @@ const Login = () => {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <h1>Welcome Back</h1>
+          <img src={logo} alt="Waste Management System Logo" className="login-logo" />
           <p>Please login to your account</p>
         </div>
         {error && <div className="error-message">{error}</div>}

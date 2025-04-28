@@ -1922,3 +1922,67 @@ textarea.form-input {
     color: #333;
     font-weight: 500;
 }
+
+/* Postal Residents Section Styles */
+.postal-residents {
+    padding: 20px;
+}
+
+.postal-code-selection {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+    align-items: center;
+}
+
+.postal-code-select {
+    padding: 10px;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    min-width: 200px;
+    font-size: 1rem;
+}
+
+.send-message-btn {
+    padding: 10px 20px;
+    background-color: var(--primary-green);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+}
+
+.send-message-btn:hover {
+    background-color: var(--dark-green);
+}
+
+.residents-list {
+    margin-top: 20px;
+}
+
+.residents-list h3 {
+    margin-bottom: 20px;
+    color: var(--charcoal-grey);
+}
+
+.message-form {
+    margin-top: 20px;
+}
+
+.message-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 150px;
+    margin-bottom: 20px;
+}
+
+.message-input:focus {
+    outline: none;
+    border-color: var(--primary-green);
+}

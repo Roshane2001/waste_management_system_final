@@ -21,6 +21,10 @@ const RecyclingCenterHome = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [selectedMaterial, setSelectedMaterial] = useState(null);
     const [showNewBulkModal, setShowNewBulkModal] = useState(false);
+    const [recyclingTab, setRecyclingTab] = useState('overview');
+    const [showNoteModal, setShowNoteModal] = useState(false);
+    const [currentStepId, setCurrentStepId] = useState(null);
+    const [stepNote, setStepNote] = useState('');
     const [newBulkData, setNewBulkData] = useState({
         name: '',
         type: '',
@@ -35,42 +39,48 @@ const RecyclingCenterHome = () => {
                 name: 'Collection',
                 status: 'completed',
                 description: 'Waste materials are collected from various sources',
-                completedAt: '2024-03-15 09:00'
+                completedAt: '2024-03-15 09:00',
+                notes: 'Collected from 5 different locations'
             },
             {
                 id: 2,
                 name: 'Sorting',
                 status: 'in-progress',
                 description: 'Materials are sorted by type and quality',
-                completedAt: null
+                completedAt: null,
+                notes: ''
             },
             {
                 id: 3,
                 name: 'Cleaning',
                 status: 'pending',
                 description: 'Materials are cleaned and prepared for processing',
-                completedAt: null
+                completedAt: null,
+                notes: ''
             },
             {
                 id: 4,
                 name: 'Processing',
                 status: 'pending',
                 description: 'Materials are processed into raw materials',
-                completedAt: null
+                completedAt: null,
+                notes: ''
             },
             {
                 id: 5,
                 name: 'Quality Check',
                 status: 'pending',
                 description: 'Processed materials undergo quality inspection',
-                completedAt: null
+                completedAt: null,
+                notes: ''
             },
             {
                 id: 6,
                 name: 'Packaging',
                 status: 'pending',
                 description: 'Materials are packaged for distribution',
-                completedAt: null
+                completedAt: null,
+                notes: ''
             }
         ]
     });
@@ -321,6 +331,8 @@ const RecyclingCenterHome = () => {
                 completedAt: null
             }))
         }));
+        // Set the recycling tab to process-updates when a material is selected
+        setRecyclingTab('process-updates');
     };
 
     const handleProcessUpdate = (stepId, newStatus) => {
@@ -330,7 +342,7 @@ const RecyclingCenterHome = () => {
                     return {
                         ...step,
                         status: newStatus,
-                        completedAt: newStatus === 'completed' ? new Date().toISOString() : null
+                        completedAt: newStatus === 'completed' ? new Date().toLocaleString() : null
                     };
                 }
                 return step;
@@ -340,6 +352,11 @@ const RecyclingCenterHome = () => {
             let newCurrentStep = prev.currentStep;
             if (newStatus === 'completed' && stepId === prev.currentStep) {
                 newCurrentStep = Math.min(prev.currentStep + 1, prev.steps.length);
+
+                // If we're completing the current step, set the next step to in-progress
+                if (newCurrentStep <= prev.steps.length) {
+                    updatedSteps[newCurrentStep - 1].status = 'in-progress';
+                }
             }
 
             return {
@@ -348,6 +365,35 @@ const RecyclingCenterHome = () => {
                 steps: updatedSteps
             };
         });
+    };
+
+    const handleAddNote = (stepId) => {
+        setCurrentStepId(stepId);
+        setStepNote('');
+        setShowNoteModal(true);
+    };
+
+    const handleNoteSubmit = (e) => {
+        e.preventDefault();
+
+        setRecyclingProcess(prev => {
+            const updatedSteps = prev.steps.map(step => {
+                if (step.id === currentStepId) {
+                    return {
+                        ...step,
+                        notes: stepNote
+                    };
+                }
+                return step;
+            });
+
+            return {
+                ...prev,
+                steps: updatedSteps
+            };
+        });
+
+        setShowNoteModal(false);
     };
 
     const handleNewBulkChange = (e) => {
@@ -554,12 +600,22 @@ const RecyclingCenterHome = () => {
                         <div className="materials-section">
                             <div className="section-header">
                                 <h2>Recycling Materials</h2>
-                                <button
-                                    className="add-bulk-btn"
-                                    onClick={() => setShowNewBulkModal(true)}
-                                >
-                                    Add New Recycling Bulk
-                                </button>
+                                <div className="recycling-filters">
+                                    <select
+                                        value={recyclingTab}
+                                        onChange={(e) => setRecyclingTab(e.target.value)}
+                                        className="view-select"
+                                    >
+                                        <option value="overview">Overview</option>
+                                        <option value="process-updates">Process Updates</option>
+                                    </select>
+                                    <button
+                                        className="add-bulk-btn"
+                                        onClick={() => setShowNewBulkModal(true)}
+                                    >
+                                        Add New Recycling Bulk
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Add New Bulk Modal */}
@@ -634,105 +690,134 @@ const RecyclingCenterHome = () => {
                             )}
 
                             {/* Materials List */}
-                            <div className="materials-list">
-                                {recyclingMaterials.map(material => (
-                                    <div
-                                        key={material.id}
-                                        className={`material-card ${selectedMaterial?.id === material.id ? 'selected' : ''}`}
-                                        onClick={() => handleMaterialClick(material)}
-                                    >
-                                        <div className="material-header">
-                                            <h3>{material.name}</h3>
-                                            <span className={`status-badge ${material.status.toLowerCase().replace(' ', '-')}`}>
-                                                {material.status}
-                                            </span>
-                                        </div>
-                                        <div className="material-details">
-                                            <div className="detail-item">
-                                                <span className="detail-label">Type:</span>
-                                                <span className="detail-value">{material.type}</span>
-                                            </div>
-                                            <div className="detail-item">
-                                                <span className="detail-label">Quantity:</span>
-                                                <span className="detail-value">{material.quantity}</span>
-                                            </div>
-                                            <div className="detail-item">
-                                                <span className="detail-label">Last Updated:</span>
-                                                <span className="detail-value">{material.lastUpdated}</span>
-                                            </div>
-                                        </div>
-                                        <p className="material-description">{material.description}</p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Recycling Process Section */}
-                            {selectedMaterial && (
-                                <div className="recycling-process-section">
-                                    <div className="section-header">
-                                        <h2>Recycling Process - {selectedMaterial.name}</h2>
-                                        <div className="process-overview">
-                                            <div className="process-progress">
-                                                <div
-                                                    className="progress-bar"
-                                                    style={{ width: `${(recyclingProcess.currentStep / recyclingProcess.steps.length) * 100}%` }}
-                                                />
-                                                <span className="progress-text">
-                                                    Step {recyclingProcess.currentStep} of {recyclingProcess.steps.length}
+                            {recyclingTab === 'overview' && (
+                                <div className="materials-list">
+                                    {recyclingMaterials.map(material => (
+                                        <div
+                                            key={material.id}
+                                            className={`material-card ${selectedMaterial?.id === material.id ? 'selected' : ''}`}
+                                            onClick={() => handleMaterialClick(material)}
+                                        >
+                                            <div className="material-header">
+                                                <h3>{material.name}</h3>
+                                                <span className={`status-badge ${material.status.toLowerCase().replace(' ', '-')}`}>
+                                                    {material.status}
                                                 </span>
                                             </div>
+                                            <div className="material-details">
+                                                <div className="detail-item">
+                                                    <span className="detail-label">Type:</span>
+                                                    <span className="detail-value">{material.type}</span>
+                                                </div>
+                                                <div className="detail-item">
+                                                    <span className="detail-label">Quantity:</span>
+                                                    <span className="detail-value">{material.quantity}</span>
+                                                </div>
+                                                <div className="detail-item">
+                                                    <span className="detail-label">Last Updated:</span>
+                                                    <span className="detail-value">{material.lastUpdated}</span>
+                                                </div>
+                                            </div>
+                                            <p className="material-description">{material.description}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Recycling Process Section */}
+                            {recyclingTab === 'process-updates' && selectedMaterial && (
+                                <div className="recycling-process-section">
+                                    <div className="section-header">
+                                        <div>
+                                            <h2>Recycling Process - {selectedMaterial.name}</h2>
+                                            <p className="material-subtitle">{selectedMaterial.type} • {selectedMaterial.quantity}</p>
+                                        </div>
+                                        <div className="process-stats">
+                                            <div className="stat-item">
+                                                <span className="stat-label">Current Step</span>
+                                                <span className="stat-value">{recyclingProcess.steps.find(step => step.status === 'in-progress')?.name || 'Not Started'}</span>
+                                            </div>
+                                            <div className="stat-item">
+                                                <span className="stat-label">Last Updated</span>
+                                                <span className="stat-value">{new Date().toLocaleString()}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="process-overview">
+                                        <div className="process-progress">
+                                            <div
+                                                className="progress-bar"
+                                                style={{
+                                                    width: `${(recyclingProcess.currentStep / recyclingProcess.steps.length) * 100}%`
+                                                }}
+                                            />
+                                            <span className="progress-text">
+                                                Step {recyclingProcess.currentStep} of {recyclingProcess.steps.length}
+                                            </span>
                                         </div>
                                     </div>
 
                                     <div className="process-steps">
-                                        {recyclingProcess.steps.map((step) => (
+                                        {recyclingProcess.steps.map((step, index) => (
                                             <div
                                                 key={step.id}
                                                 className={`process-step ${step.status} ${step.id === recyclingProcess.currentStep ? 'current' : ''}`}
                                             >
                                                 <div className="step-header">
-                                                    <h3>{step.name}</h3>
-                                                    <span className={`status-badge ${step.status}`}>
-                                                        {step.status.charAt(0).toUpperCase() + step.status.slice(1)}
-                                                    </span>
+                                                    <div className="step-title">
+                                                        <span className="step-number">{index + 1}</span>
+                                                        <h3>{step.name}</h3>
+                                                    </div>
+                                                    <div className="step-actions">
+                                                        <span className={`status-badge ${step.status}`}>
+                                                            {step.status.charAt(0).toUpperCase() + step.status.slice(1)}
+                                                        </span>
+                                                        {step.id === recyclingProcess.currentStep && (
+                                                            <div className="step-controls">
+                                                                <button
+                                                                    className="btn-action"
+                                                                    onClick={() => handleProcessUpdate(step.id, 'completed')}
+                                                                    disabled={step.status === 'completed'}
+                                                                >
+                                                                    Complete Step
+                                                                </button>
+                                                                <button
+                                                                    className="btn-action"
+                                                                    onClick={() => handleAddNote(step.id)}
+                                                                >
+                                                                    Add Note
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
 
-                                                <p className="step-description">{step.description}</p>
+                                                <p className="step-description">
+                                                    {step.description}
+                                                </p>
 
-                                                {step.completedAt && (
-                                                    <p className="step-completed">
-                                                        Completed: {new Date(step.completedAt).toLocaleString()}
-                                                    </p>
+                                                {step.notes && (
+                                                    <div className="step-notes">
+                                                        <p className="notes-label">Notes:</p>
+                                                        <p className="notes-content">{step.notes}</p>
+                                                    </div>
                                                 )}
 
-                                                <div className="step-actions">
-                                                    {step.id === recyclingProcess.currentStep && (
-                                                        <>
-                                                            <button
-                                                                className="btn btn-primary"
-                                                                onClick={() => handleProcessUpdate(step.id, 'in-progress')}
-                                                                disabled={step.status === 'in-progress'}
-                                                            >
-                                                                Start Step
-                                                            </button>
-                                                            <button
-                                                                className="btn btn-success"
-                                                                onClick={() => handleProcessUpdate(step.id, 'completed')}
-                                                                disabled={step.status !== 'in-progress'}
-                                                            >
-                                                                Complete Step
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                    {step.status === 'completed' && (
-                                                        <button
-                                                            className="btn btn-warning"
-                                                            onClick={() => handleProcessUpdate(step.id, 'in-progress')}
-                                                        >
-                                                            Reopen Step
-                                                        </button>
-                                                    )}
-                                                </div>
+                                                {step.completedAt && (
+                                                    <div className="step-timing">
+                                                        <div className="timing-item">
+                                                            <span className="timing-label">Completed:</span>
+                                                            <span className="timing-value">{step.completedAt}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {step.status === 'completed' && (
+                                                    <p className="step-completed">
+                                                        Completed successfully
+                                                    </p>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -742,6 +827,37 @@ const RecyclingCenterHome = () => {
                     )}
                 </main>
             </div>
+
+            {/* Note Modal */}
+            {showNoteModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h3>Add Note to Step</h3>
+                        <form onSubmit={handleNoteSubmit}>
+                            <div className="form-group">
+                                <label htmlFor="stepNote">Note</label>
+                                <textarea
+                                    id="stepNote"
+                                    value={stepNote}
+                                    onChange={(e) => setStepNote(e.target.value)}
+                                    placeholder="Enter notes about this step..."
+                                    required
+                                />
+                            </div>
+                            <div className="modal-actions">
+                                <button type="submit" className="btn-primary">Save Note</button>
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={() => setShowNoteModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

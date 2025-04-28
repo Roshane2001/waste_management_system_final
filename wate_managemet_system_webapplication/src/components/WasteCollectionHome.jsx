@@ -11,6 +11,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import './WasteCollectionHome.css';
+import app from '../services/firebase';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+import PostalResidents from './PostalResidents';
+import Reports from './Reports';
 
 const WasteCollectionHome = () => {
     const navigate = useNavigate();
@@ -1429,6 +1435,30 @@ const WasteCollectionHome = () => {
         setShowTruckLocation(true);
     };
 
+    // Add new state for postal code residents list
+    const [selectedPostalCode, setSelectedPostalCode] = useState('');
+    const [postalCodeMessage, setPostalCodeMessage] = useState('');
+    const [showMessageModal, setShowMessageModal] = useState(false);
+
+    // Function to get unique postal codes from residents
+    const getUniquePostalCodes = () => {
+        return [...new Set(residents.map(resident => resident.postalCode))];
+    };
+
+    // Function to get residents by postal code
+    const getResidentsByPostalCode = (postalCode) => {
+        return residents.filter(resident => resident.postalCode === postalCode);
+    };
+
+    // Function to handle sending message to residents
+    const handleSendMessage = () => {
+        // Here you would typically integrate with your backend to send messages
+        // For now, we'll just show an alert
+        alert(`Message sent to residents in postal code ${selectedPostalCode}`);
+        setShowMessageModal(false);
+        setPostalCodeMessage('');
+    };
+
     /**
      * Component Render
      * 
@@ -1480,6 +1510,12 @@ const WasteCollectionHome = () => {
                         </li>
                         <li className={activeTab === 'complaints' ? 'active' : ''} onClick={() => setActiveTab('complaints')}>
                             <span className="icon">📝</span> Complaints
+                        </li>
+                        <li className={activeTab === 'postal-residents' ? 'active' : ''} onClick={() => setActiveTab('postal-residents')}>
+                            <span className="icon">📍</span> Postal Residents
+                        </li>
+                        <li className={activeTab === 'live-location' ? 'active' : ''} onClick={() => setActiveTab('live-location')}>
+                            <span className="icon">🗺️</span> Live Location
                         </li>
                         <li className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}>
                             <span className="icon">⚙️</span> Settings
@@ -2576,478 +2612,8 @@ const WasteCollectionHome = () => {
 
                     {/* Reports Tab */}
                     {activeTab === 'reports' && (
-                        <div className="reports">
-                            <h2>Reports & Analytics</h2>
-
-                            {/* Report Controls */}
-                            <div className="report-controls">
-                                <div className="report-type-selector">
-                                    <button
-                                        className={`report-type-btn ${reportType === 'collections' ? 'active' : ''}`}
-                                        onClick={() => setReportType('collections')}
-                                    >
-                                        Collections
-                                    </button>
-                                    <button
-                                        className={`report-type-btn ${reportType === 'waste' ? 'active' : ''}`}
-                                        onClick={() => setReportType('waste')}
-                                    >
-                                        Waste Analysis
-                                    </button>
-                                    <button
-                                        className={`report-type-btn ${reportType === 'areas' ? 'active' : ''}`}
-                                        onClick={() => setReportType('areas')}
-                                    >
-                                        Area Performance
-                                    </button>
-                                    <button
-                                        className={`report-type-btn ${reportType === 'vehicles' ? 'active' : ''}`}
-                                        onClick={() => setReportType('vehicles')}
-                                    >
-                                        Vehicle Efficiency
-                                    </button>
-                                    <button
-                                        className={`report-type-btn ${reportType === 'staff' ? 'active' : ''}`}
-                                        onClick={() => setReportType('staff')}
-                                    >
-                                        Staff Performance
-                                    </button>
-                                    <button
-                                        className={`report-type-btn ${reportType === 'costs' ? 'active' : ''}`}
-                                        onClick={() => setReportType('costs')}
-                                    >
-                                        Cost Analysis
-                                    </button>
-                                </div>
-
-                                <div className="report-filters">
-                                    <select className="filter-select">
-                                        <option value="last-month">Last Month</option>
-                                        <option value="last-3-months">Last 3 Months</option>
-                                        <option value="last-6-months">Last 6 Months</option>
-                                        <option value="last-year">Last Year</option>
-                                        <option value="custom">Custom Range</option>
-                                    </select>
-                                    <button className="export-btn">Export Report</button>
-                                </div>
-                            </div>
-
-                            {/* Collections Report */}
-                            {reportType === 'collections' && (
-                                <div className="report-content">
-                                    <div className="report-summary">
-                                        <div className="summary-card">
-                                            <h3>Total Collections</h3>
-                                            <p className="summary-value">156</p>
-                                            <p className="summary-change positive">+5% from last month</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Completion Rate</h3>
-                                            <p className="summary-value">96%</p>
-                                            <p className="summary-change positive">+2% from last month</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Average Collection Time</h3>
-                                            <p className="summary-value">45 min</p>
-                                            <p className="summary-change negative">+5 min from last month</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Customer Satisfaction</h3>
-                                            <p className="summary-value">4.7/5</p>
-                                            <p className="summary-change positive">+0.2 from last month</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="report-chart">
-                                        <h3>Collection Trends</h3>
-                                        <div className="chart-container">
-                                            <div className="mock-chart">
-                                                <div className="chart-bars">
-                                                    {reportData.collectionTrends.map((item, index) => (
-                                                        <div key={index} className="chart-bar" style={{ height: `${(item.collections / 200) * 100}%` }}>
-                                                            <span className="bar-value">{item.collections}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="chart-labels">
-                                                    {reportData.collectionTrends.map((item, index) => (
-                                                        <div key={index} className="chart-label">{item.month}</div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="report-table">
-                                        <h3>Monthly Collection Details</h3>
-                                        <table className="data-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Month</th>
-                                                    <th>Collections</th>
-                                                    <th>Waste Collected</th>
-                                                    <th>Recycling Rate</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {reportData.collectionTrends.map((item, index) => (
-                                                    <tr key={index}>
-                                                        <td>{item.month}</td>
-                                                        <td>{item.collections}</td>
-                                                        <td>{item.wasteCollected}</td>
-                                                        <td>{item.recyclingRate}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Waste Analysis Report */}
-                            {reportType === 'waste' && (
-                                <div className="report-content">
-                                    <div className="report-summary">
-                                        <div className="summary-card">
-                                            <h3>Total Waste Collected</h3>
-                                            <p className="summary-value">2,450 kg</p>
-                                            <p className="summary-change positive">+8% from last month</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Recycling Rate</h3>
-                                            <p className="summary-value">68%</p>
-                                            <p className="summary-change positive">+3% from last month</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Landfill Reduction</h3>
-                                            <p className="summary-value">1,666 kg</p>
-                                            <p className="summary-change positive">+10% from last month</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Carbon Footprint Reduction</h3>
-                                            <p className="summary-value">1.2 tons CO2</p>
-                                            <p className="summary-change positive">+15% from last month</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="report-chart">
-                                        <h3>Waste Type Distribution</h3>
-                                        <div className="chart-container">
-                                            <div className="mock-pie-chart">
-                                                <div className="pie-segment" style={{ width: '40%', backgroundColor: '#4CAF50' }}>
-                                                    <span>Mixed (40%)</span>
-                                                </div>
-                                                <div className="pie-segment" style={{ width: '25%', backgroundColor: '#FFEB3B' }}>
-                                                    <span>Organic (25%)</span>
-                                                </div>
-                                                <div className="pie-segment" style={{ width: '35%', backgroundColor: '#03A9F4' }}>
-                                                    <span>Recyclable (35%)</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="report-table">
-                                        <h3>Waste Type Details</h3>
-                                        <table className="data-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Waste Type</th>
-                                                    <th>Percentage</th>
-                                                    <th>Weight</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {reportData.wasteTypeDistribution.map((item, index) => (
-                                                    <tr key={index}>
-                                                        <td>{item.type}</td>
-                                                        <td>{item.percentage}%</td>
-                                                        <td>{item.weight}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Area Performance Report */}
-                            {reportType === 'areas' && (
-                                <div className="report-content">
-                                    <div className="report-summary">
-                                        <div className="summary-card">
-                                            <h3>Total Areas Covered</h3>
-                                            <p className="summary-value">5</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Average Completion Rate</h3>
-                                            <p className="summary-value">96%</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Average Recycling Rate</h3>
-                                            <p className="summary-value">69%</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Best Performing Area</h3>
-                                            <p className="summary-value">Downtown</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="report-chart">
-                                        <h3>Area Performance Comparison</h3>
-                                        <div className="chart-container">
-                                            <div className="mock-chart">
-                                                <div className="chart-bars">
-                                                    {reportData.areaPerformance.map((item, index) => (
-                                                        <div key={index} className="chart-bar" style={{ height: `${parseInt(item.completionRate)}%` }}>
-                                                            <span className="bar-value">{item.completionRate}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="chart-labels">
-                                                    {reportData.areaPerformance.map((item, index) => (
-                                                        <div key={index} className="chart-label">{item.area}</div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="report-table">
-                                        <h3>Area Performance Details</h3>
-                                        <table className="data-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Area</th>
-                                                    <th>Collections</th>
-                                                    <th>Completion Rate</th>
-                                                    <th>Recycling Rate</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {reportData.areaPerformance.map((item, index) => (
-                                                    <tr key={index}>
-                                                        <td>{item.area}</td>
-                                                        <td>{item.collections}</td>
-                                                        <td>{item.completionRate}</td>
-                                                        <td>{item.recyclingRate}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Vehicle Efficiency Report */}
-                            {reportType === 'vehicles' && (
-                                <div className="report-content">
-                                    <div className="report-summary">
-                                        <div className="summary-card">
-                                            <h3>Total Vehicles</h3>
-                                            <p className="summary-value">5</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Average Efficiency</h3>
-                                            <p className="summary-value">2.9 km/L</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Total Distance</h3>
-                                            <p className="summary-value">5,580 km</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Total Fuel Used</h3>
-                                            <p className="summary-value">1,850 L</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="report-chart">
-                                        <h3>Vehicle Efficiency Comparison</h3>
-                                        <div className="chart-container">
-                                            <div className="mock-chart">
-                                                <div className="chart-bars">
-                                                    {reportData.vehicleEfficiency.map((item, index) => (
-                                                        <div key={index} className="chart-bar" style={{ height: `${(parseFloat(item.efficiency) / 4) * 100}%` }}>
-                                                            <span className="bar-value">{item.efficiency}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="chart-labels">
-                                                    {reportData.vehicleEfficiency.map((item, index) => (
-                                                        <div key={index} className="chart-label">{item.vehicle}</div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="report-table">
-                                        <h3>Vehicle Efficiency Details</h3>
-                                        <table className="data-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Vehicle</th>
-                                                    <th>Trips</th>
-                                                    <th>Distance</th>
-                                                    <th>Fuel Used</th>
-                                                    <th>Efficiency</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {reportData.vehicleEfficiency.map((item, index) => (
-                                                    <tr key={index}>
-                                                        <td>{item.vehicle}</td>
-                                                        <td>{item.trips}</td>
-                                                        <td>{item.distance}</td>
-                                                        <td>{item.fuelUsed}</td>
-                                                        <td>{item.efficiency}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Staff Performance Report */}
-                            {reportType === 'staff' && (
-                                <div className="report-content">
-                                    <div className="report-summary">
-                                        <div className="summary-card">
-                                            <h3>Total Staff</h3>
-                                            <p className="summary-value">5</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Average Completion Rate</h3>
-                                            <p className="summary-value">97%</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Average Customer Rating</h3>
-                                            <p className="summary-value">4.7/5</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Best Performing Staff</h3>
-                                            <p className="summary-value">Lisa Driver</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="report-chart">
-                                        <h3>Staff Performance Comparison</h3>
-                                        <div className="chart-container">
-                                            <div className="mock-chart">
-                                                <div className="chart-bars">
-                                                    {reportData.staffPerformance.map((item, index) => (
-                                                        <div key={index} className="chart-bar" style={{ height: `${(parseFloat(item.customerRating) / 5) * 100}%` }}>
-                                                            <span className="bar-value">{item.customerRating}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="chart-labels">
-                                                    {reportData.staffPerformance.map((item, index) => (
-                                                        <div key={index} className="chart-label">{item.staff}</div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="report-table">
-                                        <h3>Staff Performance Details</h3>
-                                        <table className="data-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Staff</th>
-                                                    <th>Collections</th>
-                                                    <th>Completion Rate</th>
-                                                    <th>Customer Rating</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {reportData.staffPerformance.map((item, index) => (
-                                                    <tr key={index}>
-                                                        <td>{item.staff}</td>
-                                                        <td>{item.collections}</td>
-                                                        <td>{item.completionRate}</td>
-                                                        <td>{item.customerRating}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Cost Analysis Report */}
-                            {reportType === 'costs' && (
-                                <div className="report-content">
-                                    <div className="report-summary">
-                                        <div className="summary-card">
-                                            <h3>Total Costs</h3>
-                                            <p className="summary-value">$8,250</p>
-                                            <p className="summary-change negative">+5% from last month</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Cost per Collection</h3>
-                                            <p className="summary-value">$52.88</p>
-                                            <p className="summary-change negative">+3% from last month</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Cost per kg</h3>
-                                            <p className="summary-value">$3.37</p>
-                                            <p className="summary-change negative">+2% from last month</p>
-                                        </div>
-                                        <div className="summary-card">
-                                            <h3>Largest Expense</h3>
-                                            <p className="summary-value">Fuel (35%)</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="report-chart">
-                                        <h3>Cost Distribution</h3>
-                                        <div className="chart-container">
-                                            <div className="mock-pie-chart">
-                                                <div className="pie-segment" style={{ width: '35%', backgroundColor: '#4CAF50' }}>
-                                                    <span>Fuel (35%)</span>
-                                                </div>
-                                                <div className="pie-segment" style={{ width: '25%', backgroundColor: '#FFEB3B' }}>
-                                                    <span>Maintenance (25%)</span>
-                                                </div>
-                                                <div className="pie-segment" style={{ width: '20%', backgroundColor: '#03A9F4' }}>
-                                                    <span>Staff (20%)</span>
-                                                </div>
-                                                <div className="pie-segment" style={{ width: '15%', backgroundColor: '#9C27B0' }}>
-                                                    <span>Equipment (15%)</span>
-                                                </div>
-                                                <div className="pie-segment" style={{ width: '5%', backgroundColor: '#F44336' }}>
-                                                    <span>Other (5%)</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="report-table">
-                                        <h3>Cost Breakdown</h3>
-                                        <table className="data-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Category</th>
-                                                    <th>Amount</th>
-                                                    <th>Percentage</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {reportData.costAnalysis.map((item, index) => (
-                                                    <tr key={index}>
-                                                        <td>{item.category}</td>
-                                                        <td>{item.amount}</td>
-                                                        <td>{item.percentage}%</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
+                        <div className="reports-section">
+                            <Reports />
                         </div>
                     )}
 
@@ -3686,7 +3252,7 @@ const WasteCollectionHome = () => {
                                             <th>Resident</th>
                                             <th>Category</th>
                                             <th>Title</th>
-                                            <th>Location</th>
+                                            <th>Postal Code</th>
                                             <th>Date</th>
                                             <th>Status</th>
                                             <th>Actions</th>
@@ -3817,6 +3383,41 @@ const WasteCollectionHome = () => {
                             )}
                         </div>
                     )}
+
+                    {/* Postal Residents Tab */}
+                    {activeTab === 'postal-residents' && (
+                        <div className="postal-residents-container">
+                            <PostalResidents residents={residents} />
+                        </div>
+                    )}
+                    {activeTab === 'live-location' && (
+                        <div className="live-location-section">
+                            <h2>Live Location Tracking</h2>
+                            <div className="map-container">
+                                {/* Map will be implemented here */}
+                                <div className="map-placeholder">
+                                    <span className="icon">🗺️</span>
+                                    <p>Map loading...</p>
+                                </div>
+                            </div>
+                            <div className="location-details">
+                                <div className="current-location">
+                                    <h3>Current Location</h3>
+                                    <p>Loading location data...</p>
+                                </div>
+                                <div className="collection-route">
+                                    <h3>Collection Route</h3>
+                                    <p>Route information will be displayed here</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {activeTab === 'settings' && (
+                        <div className="settings-section">
+                            <h2>Settings</h2>
+                            {/* Add your settings components here */}
+                        </div>
+                    )}
                 </main>
             </div>
 
@@ -3857,5 +3458,4 @@ const WasteCollectionHome = () => {
         </div>
     );
 };
-
 export default WasteCollectionHome; 
