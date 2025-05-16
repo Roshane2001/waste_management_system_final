@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:waste_management_system_mobileapp/services/firebase_service.dart';
+import 'login_page.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -16,8 +18,64 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _addressController = TextEditingController();
   final _postalCodeController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _firebaseService = FirebaseService();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _addressController.dispose();
+    _postalCodeController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleRegister() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        // Create user data map
+        Map<String, dynamic> userData = {
+          'name': _nameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'address': _addressController.text.trim(),
+          'postalCode': _postalCodeController.text.trim(),
+          'phone': _phoneController.text.trim(),
+        };
+
+        await _firebaseService.registerWithEmailAndPassword(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+          userData,
+        );
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+          );
+        }
+      } catch (error) {
+        if (mounted) {
+          FirebaseService.showErrorDialog(context, error.toString());
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,12 +135,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _addressController,
                   decoration: InputDecoration(
                     labelText: 'Address',
-                    prefixIcon: const Icon(Icons.location_on),
+                    prefixIcon: const Icon(Icons.home),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  maxLines: 2,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your address';
@@ -97,15 +154,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _postalCodeController,
                   decoration: InputDecoration(
                     labelText: 'Postal Code',
-                    prefixIcon: const Icon(Icons.markunread_mailbox),
+                    prefixIcon: const Icon(Icons.location_on),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  keyboardType: TextInputType.number,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter postal code';
+                      return 'Please enter your postal code';
                     }
                     return null;
                   },
@@ -228,12 +284,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 // Register Button
                 ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      // TODO: Implement registration logic
-                      Navigator.pushReplacementNamed(context, '/login');
-                    }
-                  },
+                  onPressed: _isLoading ? null : _handleRegister,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
@@ -242,13 +293,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'REGISTER',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'REGISTER',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 16),
 
@@ -274,17 +334,5 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    _addressController.dispose();
-    _postalCodeController.dispose();
-    _phoneController.dispose();
-    super.dispose();
   }
 }

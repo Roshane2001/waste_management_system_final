@@ -7,11 +7,11 @@
  */
 
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Login from './components/Login';
-import Register from './components/Register';
-import WasteCollectionHome from './components/WasteCollectionHome';
-import RecyclingCenterHome from './components/RecyclingCenterHome';
-import ShopTransactionHistory from './components/ShopTransactionHistory';
+import Login from './components/Login.jsx';
+import Register from './components/Register.jsx';
+import WasteCollectionHome from './components/WasteCollectionHome.jsx';
+import RecyclingCenterHome from './components/RecyclingCenterHome.jsx';
+import ShopTransactionHistory from './components/ShopTransactionHistory.jsx';
 
 /**
  * Main App Component

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:waste_management_system_mobileapp/services/firebase_service.dart';
+import 'login_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -9,14 +11,111 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController =
-      TextEditingController(text: 'John Doe'); // Example data
-  final _emailController = TextEditingController(text: 'john.doe@example.com');
-  final _phoneController = TextEditingController(text: '+1234567890');
-  final _addressController = TextEditingController(text: '123 Main St');
-  final _cityController = TextEditingController(text: 'New York');
-  final _postalCodeController = TextEditingController(text: '10001');
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _postalCodeController = TextEditingController();
+  final _firebaseService = FirebaseService();
   bool _isEditing = false;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final userData = await _firebaseService.getUserData();
+      if (userData != null) {
+        _nameController.text = userData['name'] ?? '';
+        _emailController.text = userData['email'] ?? '';
+        _phoneController.text = userData['phone'] ?? '';
+        _addressController.text = userData['address'] ?? '';
+        _cityController.text = userData['city'] ?? '';
+        _postalCodeController.text = userData['postalCode'] ?? '';
+      }
+    } catch (error) {
+      if (mounted) {
+        FirebaseService.showErrorDialog(context, error.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleSave() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        Map<String, dynamic> userData = {
+          'name': _nameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'address': _addressController.text.trim(),
+          'city': _cityController.text.trim(),
+          'postalCode': _postalCodeController.text.trim(),
+        };
+
+        await _firebaseService.updateUserProfile(userData);
+        setState(() {
+          _isEditing = false;
+        });
+      } catch (error) {
+        if (mounted) {
+          FirebaseService.showErrorDialog(context, error.toString());
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    }
+  }
+
+  Future<void> _handleSignOut() async {
+    try {
+      await _firebaseService.signOut();
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+          (route) => false,
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        FirebaseService.showErrorDialog(context, error.toString());
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _cityController.dispose();
+    _postalCodeController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,148 +125,147 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
+          if (!_isEditing)
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () {
+                setState(() {
+                  _isEditing = true;
+                });
+              },
+            ),
+          if (_isEditing)
+            IconButton(
+              icon: const Icon(Icons.save),
+              onPressed: _isLoading ? null : _handleSave,
+            ),
           IconButton(
-            icon: Icon(_isEditing ? Icons.save : Icons.edit),
-            onPressed: () {
-              setState(() {
-                _isEditing = !_isEditing;
-              });
-            },
+            icon: const Icon(Icons.logout),
+            onPressed: _isLoading ? null : _handleSignOut,
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Stack(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.green,
-                      child: Icon(
-                        Icons.person,
-                        size: 50,
-                        color: Colors.white,
+                    Center(
+                      child: Stack(
+                        children: [
+                          const CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.green,
+                            child: Icon(
+                              Icons.person,
+                              size: 50,
+                              color: Colors.white,
+                            ),
+                          ),
+                          if (_isEditing)
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    if (_isEditing)
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.green,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Personal Information',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
                       ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Personal Information',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Full Name',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
-                ),
-                enabled: _isEditing,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email),
-                ),
-                enabled: _isEditing,
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.phone),
-                ),
-                enabled: _isEditing,
-                keyboardType: TextInputType.phone,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your phone number';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Address Information',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _addressController,
-                decoration: const InputDecoration(
-                  labelText: 'Street Address',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.location_on),
-                ),
-                enabled: _isEditing,
-                maxLines: 2,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your address';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Full Name',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
+                      ),
+                      enabled: _isEditing,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your name';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.email),
+                      ),
+                      enabled: _isEditing,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your email';
+                        }
+                        if (!value.contains('@')) {
+                          return 'Please enter a valid email';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _phoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone Number',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.phone),
+                      ),
+                      enabled: _isEditing,
+                      keyboardType: TextInputType.phone,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your phone number';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _addressController,
+                      decoration: const InputDecoration(
+                        labelText: 'Address',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.home),
+                      ),
+                      enabled: _isEditing,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your address';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
                       controller: _cityController,
                       decoration: const InputDecoration(
                         labelText: 'City',
@@ -182,80 +280,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         return null;
                       },
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
+                    const SizedBox(height: 16),
+                    TextFormField(
                       controller: _postalCodeController,
                       decoration: const InputDecoration(
                         labelText: 'Postal Code',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.markunread_mailbox),
+                        prefixIcon: Icon(Icons.location_on),
                       ),
                       enabled: _isEditing,
-                      keyboardType: TextInputType.number,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please enter postal code';
+                          return 'Please enter your postal code';
                         }
                         return null;
                       },
                     ),
-                  ),
-                ],
-              ),
-              if (_isEditing) ...[
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        // TODO: Implement save logic
-                        setState(() {
-                          _isEditing = false;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Profile updated successfully!'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      'SAVE CHANGES',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ],
-          ),
-        ),
-      ),
+              ),
+            ),
     );
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
-    _cityController.dispose();
-    _postalCodeController.dispose();
-    super.dispose();
   }
 }
