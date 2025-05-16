@@ -1,69 +1,98 @@
 /**
  * Register Component
- * 
+ *
  * This component handles user registration for the waste management system.
  * It provides a form for new users to create an account and select their role
  * (waste collection center or recycling center).
  */
 
 import { useState } from 'react';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
+import { auth, db } from '../config/firebase-config.js'; // Ensure Firestore (db) is exported from firebase-config
 import './Register.css';
 
-/**
- * Register Component
- * 
- * @returns {JSX.Element} The rendered registration form
- */
 const Register = () => {
-    // State for form inputs
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         password: '',
         confirmPassword: '',
-        role: 'waste-collection', // Default role
+        role: 'waste-collection',
     });
     const [error, setError] = useState('');
-
-    // Hook for programmatic navigation
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    /**
-     * Handles input changes
-     * 
-     * @param {Event} e - The input change event
-     */
+    // Handle input changes
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prevState => ({
-            ...prevState,
-            [name]: value
-        }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    /**
-     * Handles form submission
-     * 
-     * @param {Event} e - The form submission event
-     */
-    const handleSubmit = (e) => {
+    // Validate form inputs
+    const validateForm = () => {
+        const { name, email, password, confirmPassword } = formData;
+        if (!name.trim()) return 'Full name is required';
+        if (!email) return 'Email is required';
+        if (!/\S+@\S+\.\S+/.test(email)) return 'Invalid email format';
+        if (password.length < 6) return 'Password must be at least 6 characters';
+        if (password !== confirmPassword) return 'Passwords do not match';
+        return '';
+    };
+
+    // Handle form submission
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
+        setLoading(true);
 
-        // Basic validation
-        if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
-            setError('Please fill in all fields');
+        const validationError = validateForm();
+        if (validationError) {
+            setError(validationError);
+            setLoading(false);
             return;
         }
 
-        if (formData.password !== formData.confirmPassword) {
-            setError('Passwords do not match');
-            return;
-        }
+        try {
+            const { name, email, password, role } = formData;
+            // Create user with Firebase Authentication
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
 
-        // For demo purposes, registration is successful
-        // In production, this would send data to a backend
-        navigate('/');
+            // Update user profile with name
+            await updateProfile(user, { displayName: name });
+
+            // Store additional user data in Firestore
+            await setDoc(doc(db, 'users', user.uid), {
+                name,
+                email,
+                role,
+                createdAt: new Date().toISOString(),
+            });
+
+            // Navigate to dashboard or home page
+            navigate('/'); // Adjust the route as needed
+        } catch (error) {
+            // Handle Firebase-specific errors
+            console.log(error)
+            switch (error.code) {
+                case 'auth/email-already-in-use':
+                    setError('This email is already registered.');
+                    break;
+                case 'auth/invalid-email':
+                    setError('Invalid email address.');
+                    break;
+                case 'auth/weak-password':
+                    setError('Password is too weak.');
+                    break;
+                default:
+                    setError('Failed to register. Please try again.');
+            }
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -72,7 +101,7 @@ const Register = () => {
                 <h1>Waste Management System</h1>
                 <h2>Register</h2>
 
-                {error && <div className="error-message">{error}</div>}
+                {error && <p className="error-message">{error}</p>}
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
@@ -84,6 +113,7 @@ const Register = () => {
                             value={formData.name}
                             onChange={handleChange}
                             placeholder="Enter your full name"
+                            disabled={loading}
                         />
                     </div>
 
@@ -96,6 +126,7 @@ const Register = () => {
                             value={formData.email}
                             onChange={handleChange}
                             placeholder="Enter your email"
+                            disabled={loading}
                         />
                     </div>
 
@@ -108,6 +139,7 @@ const Register = () => {
                             value={formData.password}
                             onChange={handleChange}
                             placeholder="Enter your password"
+                            disabled={loading}
                         />
                     </div>
 
@@ -120,6 +152,7 @@ const Register = () => {
                             value={formData.confirmPassword}
                             onChange={handleChange}
                             placeholder="Confirm your password"
+                            disabled={loading}
                         />
                     </div>
 
@@ -130,21 +163,24 @@ const Register = () => {
                             name="role"
                             value={formData.role}
                             onChange={handleChange}
+                            disabled={loading}
                         >
                             <option value="waste-collection">Waste Collection Center</option>
                             <option value="recycling-center">Recycling Center</option>
                         </select>
                     </div>
 
-                    <button type="submit" className="register-btn">Register</button>
+                    <button type="submit" className="register-btn" disabled={loading}>
+                        {loading ? 'Registering...' : 'Register'}
+                    </button>
                 </form>
 
                 <p className="login-link">
-                    Already have an account? <a href="/">Login</a>
+                    Already have an account? <a href="/login">Login</a>
                 </p>
             </div>
         </div>
     );
 };
 
-export default Register; 
+export default Register;
