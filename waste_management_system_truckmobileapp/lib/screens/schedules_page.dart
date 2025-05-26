@@ -1,7 +1,49 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:waste_management_system_truckmobileapp/providers/user_provider.dart';
+import 'package:waste_management_system_truckmobileapp/providers/waste_provider.dart';
+import 'package:waste_management_system_truckmobileapp/models/waste_pickup_model.dart';
+import 'package:intl/intl.dart';
 
-class SchedulesPage extends StatelessWidget {
+class SchedulesPage extends StatefulWidget {
   const SchedulesPage({super.key});
+
+  @override
+  State<SchedulesPage> createState() => _SchedulesPageState();
+}
+
+class _SchedulesPageState extends State<SchedulesPage> {
+  Future<void> _fetchWastePickups() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    await context.read<WasteProvider>().fetchWastePickups(
+      userProvider.user!.userId,
+    );
+  }
+
+  @override
+  void initState() {
+    _fetchWastePickups();
+    super.initState();
+  }
+
+  // Group waste pickups by date
+  Map<String, List<WastePickupModel>> _groupPickupsByDate(
+    List<WastePickupModel> pickups,
+  ) {
+    final Map<String, List<WastePickupModel>> grouped = {};
+
+    for (var pickup in pickups) {
+      final dateStr = DateFormat('EEEE, MMMM d').format(pickup.date.toDate());
+
+      if (!grouped.containsKey(dateStr)) {
+        grouped[dateStr] = [];
+      }
+
+      grouped[dateStr]!.add(pickup);
+    }
+
+    return grouped;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -11,47 +53,52 @@ class SchedulesPage extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Upcoming Collections',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+      body:
+          context.watch<WasteProvider>().isLoading
+              ? const Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(color: Colors.green),
+                ),
+              )
+              : Consumer<WasteProvider>(
+                builder: (context, wasteProvider, child) {
+                  if (wasteProvider.wastePickups.isEmpty) {
+                    return const Center(
+                      child: Text('No upcoming collections scheduled'),
+                    );
+                  }
+
+                  final groupedPickups = _groupPickupsByDate(
+                    wasteProvider.wastePickups,
+                  );
+
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Upcoming Collections',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ...groupedPickups.entries.map((entry) {
+                          return _buildScheduleItem(entry.key, entry.value);
+                        }),
+                      ],
+                    ),
+                  );
+                },
               ),
-            ),
-            const SizedBox(height: 16),
-            _buildScheduleItem(
-              'Monday, March 25',
-              [
-                _buildTimeSlot('9:00 AM', 'Construction Waste', '2.5 tons'),
-                _buildTimeSlot('2:00 PM', 'Industrial Waste', '1.8 tons'),
-              ],
-            ),
-            _buildScheduleItem(
-              'Tuesday, March 26',
-              [
-                _buildTimeSlot('10:30 AM', 'Commercial Waste', '3.0 tons'),
-                _buildTimeSlot('3:30 PM', 'Construction Waste', '2.2 tons'),
-              ],
-            ),
-            _buildScheduleItem(
-              'Wednesday, March 27',
-              [
-                _buildTimeSlot('8:00 AM', 'Industrial Waste', '2.7 tons'),
-                _buildTimeSlot('1:00 PM', 'Commercial Waste', '1.5 tons'),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 
-  Widget _buildScheduleItem(String date, List<Widget> timeSlots) {
+  Widget _buildScheduleItem(String date, List<WastePickupModel> pickups) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
@@ -73,14 +120,17 @@ class SchedulesPage extends StatelessWidget {
               ],
             ),
             const Divider(height: 24),
-            ...timeSlots,
+            ...pickups.map((pickup) {
+              final time = DateFormat('h:mm a').format(pickup.date.toDate());
+              return _buildTimeSlot(time, pickup.title, pickup.address);
+            }),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTimeSlot(String time, String type, String weight) {
+  Widget _buildTimeSlot(String time, String type, String location) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Row(
@@ -99,18 +149,12 @@ class SchedulesPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(type, style: const TextStyle(fontWeight: FontWeight.w500)),
                 Text(
-                  type,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  'Estimated: $weight',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                  ),
+                  'Location: $location',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

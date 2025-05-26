@@ -1,5 +1,12 @@
+//imported packages
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:waste_management_system_truckmobileapp/providers/user_provider.dart';
+import 'package:waste_management_system_truckmobileapp/providers/waste_provider.dart';
+import 'package:waste_management_system_truckmobileapp/models/waste_pickup_model.dart';
+import 'package:intl/intl.dart';
 
+//bulk waste collections requests for the truck
 class BulkCollectionsPage extends StatefulWidget {
   const BulkCollectionsPage({super.key});
 
@@ -8,87 +15,78 @@ class BulkCollectionsPage extends StatefulWidget {
 }
 
 class _BulkCollectionsPageState extends State<BulkCollectionsPage> {
-  final List<Map<String, dynamic>> _bulkCollections = [
-    {
-      'id': '1',
-      'location': '123 Main Street',
-      'time': '9:00 AM',
-      'type': 'Construction Waste',
-      'status': 'Pending',
-      'weight': '2.5 tons'
-    },
-    {
-      'id': '2',
-      'location': '456 Oak Avenue',
-      'time': '11:30 AM',
-      'type': 'Industrial Waste',
-      'status': 'Pending',
-      'weight': '1.8 tons'
-    },
-    {
-      'id': '3',
-      'location': '789 Pine Road',
-      'time': '2:00 PM',
-      'type': 'Commercial Waste',
-      'status': 'Pending',
-      'weight': '3.0 tons'
-    },
-  ];
+  //bulk waste collections requests for the truck
+  Future<void> _fetchBulkPickups() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    await context.read<WasteProvider>().fetchBulkPickups(
+      userProvider.user!.userId,
+    );
+  }
 
-  void _markAsCompleted(String id) {
-    setState(() {
-      final index = _bulkCollections.indexWhere((item) => item['id'] == id);
-      if (index != -1) {
-        _bulkCollections[index]['status'] = 'Completed';
-      }
-    });
+  @override
+  void initState() {
+    _fetchBulkPickups();
+    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
+    //get bulk pickups and loading from provider
+    final bulkPickups = context.read<WasteProvider>().bulkPickups;
+    final isLoading = context.watch<WasteProvider>().isLoading;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bulk Collections'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Today\'s Bulk Collections',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+      body:
+          isLoading
+              ? const Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(color: Colors.green),
+                ),
+              )
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Bulk Collections',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Display bulk pickups
+                    bulkPickups.isEmpty
+                        ? const Center(
+                          child: Text('No bulk collections available'),
+                        )
+                        : ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: bulkPickups.length,
+                          itemBuilder: (context, index) {
+                            final pickup = bulkPickups[index];
+                            return _buildBulkCollectionItem(pickup);
+                          },
+                        ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            ..._bulkCollections.map((collection) => _buildBulkCollectionItem(
-                  collection['id'],
-                  collection['location'],
-                  collection['time'],
-                  collection['type'],
-                  collection['status'],
-                  collection['weight'],
-                )),
-          ],
-        ),
-      ),
     );
   }
-
-  Widget _buildBulkCollectionItem(
-    String id,
-    String location,
-    String time,
-    String type,
-    String status,
-    String weight,
-  ) {
-    final bool isCompleted = status == 'Completed';
-    final Color statusColor = isCompleted ? Colors.green : Colors.orange;
+  
+  //widget for bulk collection item
+  Widget _buildBulkCollectionItem(WastePickupModel pickup) {
+    // Format timestamp to display time
+    final time = DateFormat('h:mm a').format(pickup.date.toDate());
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -105,7 +103,7 @@ class _BulkCollectionsPageState extends State<BulkCollectionsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        location,
+                        pickup.address,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -114,10 +112,12 @@ class _BulkCollectionsPageState extends State<BulkCollectionsPage> {
                       const SizedBox(height: 4),
                       Text(
                         'Time: $time',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'User: ${pickup.userName}',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
                       ),
                     ],
                   ),
@@ -128,13 +128,13 @@ class _BulkCollectionsPageState extends State<BulkCollectionsPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: Colors.orangeAccent.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    status,
+                    "Pending",
                     style: TextStyle(
-                      color: statusColor,
+                      color: Colors.orangeAccent,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -147,38 +147,23 @@ class _BulkCollectionsPageState extends State<BulkCollectionsPage> {
                 Icon(Icons.delete_outline, size: 16, color: Colors.grey[600]),
                 const SizedBox(width: 4),
                 Text(
-                  type,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                  "123",
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
                 const SizedBox(width: 16),
                 Icon(Icons.scale, size: 16, color: Colors.grey[600]),
                 const SizedBox(width: 4),
                 Text(
-                  weight,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                  "123",
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
               ],
             ),
-            if (!isCompleted) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => _markAsCompleted(id),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Mark as Completed'),
-                ),
-              ),
-            ],
+            const SizedBox(height: 4),
+            Text(
+              'Title: ${pickup.title}',
+              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+            ),
           ],
         ),
       ),

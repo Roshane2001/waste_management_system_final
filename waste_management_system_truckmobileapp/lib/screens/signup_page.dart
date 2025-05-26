@@ -1,6 +1,11 @@
+//imported packages
 import 'package:flutter/material.dart';
-import 'home_page.dart';
+import 'package:provider/provider.dart';
+import 'package:waste_management_system_truckmobileapp/main.dart';
+import 'package:waste_management_system_truckmobileapp/models/user_model.dart';
+import 'package:waste_management_system_truckmobileapp/providers/user_provider.dart';
 
+//
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
@@ -8,34 +13,77 @@ class SignUpPage extends StatefulWidget {
   State<SignUpPage> createState() => _SignUpPageState();
 }
 
+// SignUpPage class
 class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _vehicleNumberController = TextEditingController();
+  //variables for password
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
   @override
   void dispose() {
+    //clean the controllers wideget is disposed
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _vehicleNumberController.dispose();
     super.dispose();
   }
-
-  void _handleSignUp() {
+  
+  // Function to handle sign up
+  Future<void> _handleSignUp() async {
     if (_formKey.currentState!.validate()) {
-      // TODO: Implement actual sign up logic
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
+      print('Name: ${_nameController.text}');
+      print('Email: ${_emailController.text}');
+      print('Password: ${_passwordController.text}');
+
+      try {
+        //create user model
+        UserModel user = UserModel(
+          userId: "",
+          userName: _nameController.text,
+          userEmail: _emailController.text,
+          registeredDateTime: DateTime.now(),
+          lastUpdatedDateTime: DateTime.now(),
+          userType: "Driver",
+          password: _passwordController.text,
+          vehicleNumber: _vehicleNumberController.text,
+        );
+
+        // Registering the truck user
+        await context.read<UserProvider>().registerUser(
+          user,
+          _passwordController.text,
+        );
+        
+        // Show success message and navigate to main page
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MyApp()),
+          (route) => false,
+        );
+      } catch (error) {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Registration failed: ${error.toString()}',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Color.fromARGB(255, 207, 79, 79),
+          ),
+        );
+      }
     }
   }
 
+
+  //sing up funtions
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,11 +101,7 @@ class _SignUpPageState extends State<SignUpPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Logo
-                Image.asset(
-                  'assets/logo.png',
-                  height: 100,
-                  width: 100,
-                ),
+                Image.asset('assets/logo.png', height: 100, width: 100),
                 const SizedBox(height: 32),
 
                 // Name Field
@@ -73,6 +117,23 @@ class _SignUpPageState extends State<SignUpPage> {
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _vehicleNumberController,
+                  decoration: InputDecoration(
+                    labelText: 'Vehicle Number',
+                    prefixIcon: const Icon(Icons.person),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your vehicle number';
                     }
                     return null;
                   },
@@ -184,10 +245,19 @@ class _SignUpPageState extends State<SignUpPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Sign Up',
-                    style: TextStyle(fontSize: 16),
-                  ),
+                  child:
+                      context.watch<UserProvider>().isLoading
+                          ? SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                            ),
+                          )
+                          : const Text(
+                            'Sign Up',
+                            style: TextStyle(fontSize: 16),
+                          ),
                 ),
                 const SizedBox(height: 16),
 
