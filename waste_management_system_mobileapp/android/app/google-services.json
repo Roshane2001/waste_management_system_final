@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "455331973314",
-    "project_id": "wastemanagement-60c33",
-    "storage_bucket": "wastemanagement-60c33.firebasestorage.app"
+    "project_number": "907041039473",
+    "project_id": "waste-management-platform-on",
+    "storage_bucket": "waste-management-platform-on.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:455331973314:android:2d9604a150e5de4262535b",
+        "mobilesdk_app_id": "1:907041039473:android:6f43573be0d6993ff627d0",
         "android_client_info": {
           "package_name": "com.example.waste_management_system_mobileapp"
         }
@@ -15,7 +15,26 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBfuhkFaWb8JNVGTXxe6s_D7Keb0L1_ZyU"
+          "current_key": "AIzaSyCY8zidV1eEM_X92IHuB6T1CwMvaGtpd9U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:907041039473:android:13d9f62630b7798ef627d0",
+        "android_client_info": {
+          "package_name": "com.example.waste_management_system_truckmobileapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCY8zidV1eEM_X92IHuB6T1CwMvaGtpd9U"
         }
       ],
       "services": {

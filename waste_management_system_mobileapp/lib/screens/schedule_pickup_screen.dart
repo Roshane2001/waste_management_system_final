@@ -1,4 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:waste_management_system_mobileapp/models/waste_pickup_model.dart';
+import 'package:waste_management_system_mobileapp/providers/user_provider.dart';
+import 'package:waste_management_system_mobileapp/providers/waste_provider.dart';
+
+/// A screen for managing waste collection schedules and pickups.
 
 class SchedulePickupScreen extends StatefulWidget {
   const SchedulePickupScreen({super.key});
@@ -8,40 +15,47 @@ class SchedulePickupScreen extends StatefulWidget {
 }
 
 class _SchedulePickupScreenState extends State<SchedulePickupScreen> {
+  // Form key for validation
   final _formKey = GlobalKey<FormState>();
+  
+  // Controllers for text input fields
   final _addressController = TextEditingController();
   final _notesController = TextEditingController();
   final _phoneController = TextEditingController();
 
-  bool _isSubscribed = false;
+  // State variables
+  final bool _isSubscribed = false;
   int _unreadNotifications = 3; // Number of unread notifications
 
-  // Collection center messages
+  // Collection center messages for notifications
   final List<Map<String, dynamic>> _collectionMessages = [
     {
       'id': '1',
       'title': 'Collection Schedule Change',
-      'message': 'Due to the upcoming holiday, collection for General Waste will be on Tuesday instead of Monday next week.',
+      'message':
+          'Due to the upcoming holiday, collection for General Waste will be on Tuesday instead of Monday next week.',
       'date': '2023-06-05',
       'isRead': false,
     },
     {
       'id': '2',
       'title': 'New Recycling Guidelines',
-      'message': 'Please note that plastic bags are no longer accepted in the recyclables collection. Use paper bags instead.',
+      'message':
+          'Please note that plastic bags are no longer accepted in the recyclables collection. Use paper bags instead.',
       'date': '2023-06-03',
       'isRead': false,
     },
     {
       'id': '3',
       'title': 'Holiday Collection Hours',
-      'message': 'Collection hours will be extended on Friday due to increased volume. Pickup will continue until 5:00 PM.',
+      'message':
+          'Collection hours will be extended on Friday due to increased volume. Pickup will continue until 5:00 PM.',
       'date': '2023-06-01',
       'isRead': false,
     },
   ];
 
-  // Single collection center data
+  // Collection center information
   final Map<String, dynamic> _collectionCenter = {
     'id': '1',
     'centerName': 'City Waste Management Center',
@@ -76,6 +90,152 @@ class _SchedulePickupScreenState extends State<SchedulePickupScreen> {
     },
   ];
 
+  /// Adds a new waste pickup request to the database
+  /// @param type The type of waste for pickup
+  Future<void> _addWastePickup(String type) async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      // Generate a unique 6-digit ID based on current timestamp
+      String generateUniqueId() {
+        final now = DateTime.now();
+        final milliseconds = now.millisecondsSinceEpoch;
+        final sixDigits = milliseconds % 1000000;
+        return sixDigits.toString().padLeft(6, '0');
+      }
+
+      // Generate unique ID for this waste pickup
+      final String pickupId = generateUniqueId();
+      WastePickupModel wastePickup = WastePickupModel(
+        title: type,
+        date: Timestamp.now(),
+        userName: userProvider.user?.userName ?? 'Not Available',
+        userId: userProvider.user?.userId ?? 'Not Available',
+        coordinates:
+            userProvider.user?.locationCordinates ?? const GeoPoint(0, 0),
+        address: userProvider.user?.address ?? 'Not Available',
+        id: pickupId,
+      );
+
+      await context.read<WasteProvider>().addWastePickup(wastePickup);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to add waste pickup. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Fetches the user's scheduled waste pickups from the database
+  Future<void> _fetchWastePickups() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    await context.read<WasteProvider>().fetchWastePickups(
+      userProvider.user!.userId,
+    );
+  }
+
+  /// Deletes a waste pickup request from the database
+  /// @param pickupId The ID of the pickup to delete
+  Future<void> _deleteWastePickup(String pickupId) async {
+    try {
+      await context.read<WasteProvider>().deleteWastePickup(pickupId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pickup removed successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to remove pickup. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Shows a confirmation dialog before deleting a pickup
+  /// @param pickupId The ID of the pickup to delete
+  /// @param wasteType The type of waste for the pickup
+  void _showDeleteConfirmation(String pickupId, String wasteType) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Deletion'),
+        content: Text(
+          'Are you sure you want to remove this $wasteType pickup?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteWastePickup(pickupId);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    _fetchWastePickups();
+    super.initState();
+  }
+
+  /// Formats a timestamp into a readable date string
+  /// @param timestamp The timestamp to format
+  /// @return A formatted date string
+  String _formatDate(Timestamp timestamp) {
+    final date = timestamp.toDate();
+    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// Returns an appropriate icon for the given waste type
+  /// @param wasteType The type of waste
+  /// @return A widget containing the waste type icon
+  Widget _getWasteTypeIndicator(String wasteType) {
+    IconData iconData;
+    Color iconColor;
+
+    switch (wasteType) {
+      case 'General Waste':
+        iconData = Icons.delete_outline;
+        iconColor = Colors.grey;
+        break;
+      case 'Recyclables':
+        iconData = Icons.recycling;
+        iconColor = Colors.blue;
+        break;
+      case 'Organic Waste':
+        iconData = Icons.eco;
+        iconColor = Colors.green;
+        break;
+      default:
+        iconData = Icons.category;
+        iconColor = Colors.orange;
+    }
+
+    return CircleAvatar(
+      backgroundColor: iconColor.withOpacity(0.2),
+      child: Icon(iconData, color: iconColor),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -84,6 +244,7 @@ class _SchedulePickupScreenState extends State<SchedulePickupScreen> {
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
+          // Notification icon with unread count
           Stack(
             children: [
               IconButton(
@@ -108,10 +269,7 @@ class _SchedulePickupScreenState extends State<SchedulePickupScreen> {
                     ),
                     child: Text(
                       _unreadNotifications.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -120,185 +278,402 @@ class _SchedulePickupScreenState extends State<SchedulePickupScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Collection Center Card
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+      body: context.watch<WasteProvider>().isLoading
+          ? const Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(color: Colors.green),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on,
-                          color: Colors.green,
-                          size: 28,
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Collection Center Information Card
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Center name and area
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on,
+                                color: Colors.green,
+                                size: 28,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _collectionCenter['centerName'],
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  _collectionCenter['area'],
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                          // Contact information
+                          _buildInfoRow(
+                            Icons.location_on,
+                            'Address',
+                            _collectionCenter['address'],
+                          ),
+                          const SizedBox(height: 8),
+                          _buildInfoRow(
+                            Icons.phone,
+                            'Phone',
+                            _collectionCenter['phone'],
+                          ),
+                          const SizedBox(height: 8),
+                          _buildInfoRow(
+                            Icons.email,
+                            'Email',
+                            _collectionCenter['email'],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Collection Schedule Section
+                  const Text(
+                    'Collection Schedule',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Schedule list
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _collectionSchedule.length,
+                    itemBuilder: (context, index) {
+                      final schedule = _collectionSchedule[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12.0),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _collectionCenter['centerName'],
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16.0,
+                            vertical: 8.0,
                           ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            _collectionCenter['area'],
-                            style: const TextStyle(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.green.shade100,
+                            child: Icon(
+                              _getWasteTypeIcon(schedule['wasteType']),
                               color: Colors.green,
+                            ),
+                          ),
+                          title: Text(
+                            schedule['wasteType'],
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Text(
+                                '${schedule['day']}s, ${schedule['time']}',
+                              ),
+                              Text('Frequency: ${schedule['frequency']}'),
+                            ],
+                          ),
+                          trailing: ElevatedButton(
+                            onPressed: () {
+                              _showSubscriptionDialog(context, schedule);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                            child: context.watch<WasteProvider>().isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text('ADD MY DETAILS'),
+                          ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                    _buildInfoRow(Icons.location_on, 'Address',
-                        _collectionCenter['address']),
-                    const SizedBox(height: 8),
-                    _buildInfoRow(
-                        Icons.phone, 'Phone', _collectionCenter['phone']),
-                    const SizedBox(height: 8),
-                    _buildInfoRow(
-                        Icons.email, 'Email', _collectionCenter['email']),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Collection Schedule',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Collection Schedule List
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _collectionSchedule.length,
-              itemBuilder: (context, index) {
-                final schedule = _collectionSchedule[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12.0),
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                      );
+                    },
                   ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16.0, vertical: 8.0),
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.green.shade100,
-                      child: Icon(
-                        _getWasteTypeIcon(schedule['wasteType']),
-                        color: Colors.green,
-                      ),
-                    ),
-                    title: Text(
-                      schedule['wasteType'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text('${schedule['day']}s, ${schedule['time']}'),
-                        Text('Frequency: ${schedule['frequency']}'),
-                      ],
-                    ),
-                    trailing: ElevatedButton(
-                      onPressed: () {
-                        _showSubscriptionDialog(context, schedule);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                      ),
-                      child: const Text('ADD MY DETAILS'),
+                  const SizedBox(height: 24),
+
+                  // Important Information Section
+                  const Text(
+                    'Important Information',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
                     ),
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Important Information',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
+                  const SizedBox(height: 16),
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '• Please prepare your waste the night before collection day',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '• Separate your waste according to type (General, Recyclable, Organic)',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '• Place your waste bins at the curb by 7:00 AM on collection day',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '• For bulk waste, please contact the center at least 48 hours in advance',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // My Scheduled Pickups Section
+                  const Text(
+                    'My Scheduled Pickups',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Waste Pickups List
+                  Consumer<WasteProvider>(
+                    builder: (context, wasteProvider, _) {
+                      final pickups = wasteProvider.wastePickups;
+
+                      if (pickups.isEmpty) {
+                        return Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: Colors.grey,
+                                  size: 48,
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'No pickups scheduled yet',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Use the buttons above to schedule your waste pickup',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: pickups.length,
+                        itemBuilder: (context, index) {
+                          final pickup = pickups[index];
+                          return Card(
+                            elevation: 2,
+                            margin: const EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(16),
+                              leading: _getWasteTypeIndicator(pickup.title),
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      pickup.title,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.shade100,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      'ID: ${pickup.id}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.calendar_today,
+                                        size: 16,
+                                        color: Colors.grey,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Scheduled: ${_formatDate(pickup.date)}',
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.location_on,
+                                        size: 16,
+                                        color: Colors.grey,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          pickup.address,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      TextButton.icon(
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          color: Colors.red,
+                                          size: 20,
+                                        ),
+                                        label: const Text(
+                                          'Remove',
+                                          style: TextStyle(
+                                            color: Colors.red,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        onPressed: () {
+                                          _showDeleteConfirmation(
+                                            pickup.id,
+                                            pickup.title,
+                                          );
+                                        },
+                                        style: TextButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '• Please prepare your waste the night before collection day',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      '• Separate your waste according to type (General, Recyclable, Organic)',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      '• Place your waste bins at the curb by 7:00 AM on collection day',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      '• For bulk waste, please contact the center at least 48 hours in advance',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
+  /// Shows the notifications dialog with collection center messages
+  /// @param context The build context
   void _showNotificationsDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -311,7 +686,10 @@ class _SchedulePickupScreenState extends State<SchedulePickupScreen> {
             const Spacer(),
             if (_unreadNotifications > 0)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.red,
                   borderRadius: BorderRadius.circular(12),
@@ -343,12 +721,16 @@ class _SchedulePickupScreenState extends State<SchedulePickupScreen> {
                     final message = _collectionMessages[index];
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8.0),
-                      color: message['isRead'] ? Colors.white : Colors.green.shade50,
+                      color: message['isRead']
+                          ? Colors.white
+                          : Colors.green.shade50,
                       child: ListTile(
                         title: Text(
                           message['title'],
                           style: TextStyle(
-                            fontWeight: message['isRead'] ? FontWeight.normal : FontWeight.bold,
+                            fontWeight: message['isRead']
+                                ? FontWeight.normal
+                                : FontWeight.bold,
                           ),
                         ),
                         subtitle: Column(
@@ -396,35 +778,30 @@ class _SchedulePickupScreenState extends State<SchedulePickupScreen> {
   void _showMessageDetails(BuildContext context, Map<String, dynamic> message) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(message['title']),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              message['message'],
-              style: const TextStyle(fontSize: 16),
+      builder:
+          (context) => AlertDialog(
+            title: Text(message['title']),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(message['message'], style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 16),
+                Text(
+                  'Date: ${message['date']}',
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Date: ${message['date']}',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('CLOSE'),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text('CLOSE'),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -432,11 +809,7 @@ class _SchedulePickupScreenState extends State<SchedulePickupScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 20,
-          color: Colors.grey,
-        ),
+        Icon(icon, size: 20, color: Colors.grey),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
@@ -444,17 +817,9 @@ class _SchedulePickupScreenState extends State<SchedulePickupScreen> {
             children: [
               Text(
                 label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                ),
-              ),
+              Text(value, style: const TextStyle(fontSize: 14)),
             ],
           ),
         ),
@@ -476,120 +841,52 @@ class _SchedulePickupScreenState extends State<SchedulePickupScreen> {
   }
 
   void _showSubscriptionDialog(
-      BuildContext context, Map<String, dynamic> schedule) {
+    BuildContext context,
+    Map<String, dynamic> schedule,
+  ) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Your Details'),
-        content: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Add your details for ${schedule['wasteType']} collection on ${schedule['day']}s',
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _addressController,
-                  decoration: const InputDecoration(
-                    labelText: 'Your Address',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.location_on),
-                  ),
-                  maxLines: 2,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your address';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Contact Number',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.phone),
-                  ),
-                  keyboardType: TextInputType.phone,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your contact number';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _notesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Additional Notes (Optional)',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.note),
-                  ),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Checkbox(
-                      value: _isSubscribed,
-                      onChanged: (value) {
-                        setState(() {
-                          _isSubscribed = value ?? false;
-                        });
-                      },
-                      activeColor: Colors.green,
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'Subscribe to notifications about collection changes',
-                        style: TextStyle(fontSize: 14),
+      builder:
+          (context) => AlertDialog(
+            title: Text('Confirm ${schedule['wasteType']} Pickup'),
+            content: Text(
+              'Are you sure you want to schedule a pickup for ${schedule['wasteType']} on ${schedule['day']}s?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('CANCEL'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // Call _addWastePickup with the waste type
+                  _addWastePickup(schedule['wasteType']);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Your pickup has been scheduled successfully!',
                       ),
+                      backgroundColor: Colors.green,
                     ),
-                  ],
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
                 ),
-              ],
-            ),
+                child: const Text('CONFIRM'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text('CANCEL'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (_formKey.currentState!.validate()) {
-                // TODO: Implement submission logic
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Your details have been added successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('SUBMIT'),
-          ),
-        ],
-      ),
     );
   }
 
   @override
   void dispose() {
+    // Clean up controllers when the widget is disposed
     _addressController.dispose();
     _notesController.dispose();
     _phoneController.dispose();

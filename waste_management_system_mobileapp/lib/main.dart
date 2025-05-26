@@ -1,21 +1,17 @@
-import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:waste_management_system_mobileapp/firebase_options.dart';
-import 'screens/splash_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:waste_management_system_mobileapp/providers/location_provider.dart';
+import 'package:waste_management_system_mobileapp/providers/user_provider.dart';
+import 'package:waste_management_system_mobileapp/providers/waste_provider.dart';
 import 'screens/login_page.dart';
-import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/bulk_waste_details_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/schedule_pickup_screen.dart';
-import 'screens/waste_details_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
@@ -24,24 +20,29 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Waste Management System',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
-        useMaterial3: true,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => LocationProvider()),
+        ChangeNotifierProvider(create: (_) => WasteProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Waste Management System',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+          useMaterial3: true,
+        ),
+        home: StreamBuilder(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (ctx, snapshot) {
+            if (snapshot.hasData) {
+              return const HomeScreen();
+            }
+            return const LoginPage();
+          },
+        ),
       ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const SplashScreen(),
-        '/login': (context) => const LoginPage(),
-        '/register': (context) => const RegisterScreen(),
-        '/home': (context) => const HomeScreen(),
-        '/bulk-waste': (context) => const BulkWasteDetailsScreen(),
-        '/profile': (context) => const ProfileScreen(),
-        '/schedule-pickup': (context) => const SchedulePickupScreen(),
-        '/waste-details': (context) => const WasteDetailsScreen(),
-      },
     );
   }
 }
